@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { api } from "~/trpc/react";
+
 type Profile = {
   location: string;
   locationId: number | string | null;
@@ -16,6 +18,14 @@ type LocationResult = {
   country?: string;
   postcode?: string;
 };
+
+type ChatMessage = {
+  id: string;
+  role: "user" | "model";
+  content: string;
+};
+
+type ChatPayloadMessage = Pick<ChatMessage, "role" | "content">;
 
 function locationLabel(place: LocationResult) {
   const placeName = [
@@ -34,6 +44,8 @@ const sections = ["Bills", "Amendments", "Elected officials"] as const;
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const lastChatRequestRef = useRef<ChatPayloadMessage[] | null>(null);
   const [profile, setProfile] = useState<Profile>({
     location: "",
     locationId: null,
@@ -46,6 +58,10 @@ export function BillsDashboard() {
   const [lookupStatus, setLookupStatus] = useState<
     "idle" | "loading" | "empty" | "error"
   >("idle");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatError, setChatError] = useState<string | null>(null);
+  const chatMutation = api.chat.send.useMutation();
   const currentSection = sections[sectionIndex] ?? sections[0];
   const previousSection =
     sections[(sectionIndex - 1 + sections.length) % sections.length] ??
@@ -132,6 +148,10 @@ export function BillsDashboard() {
     };
   }, [draft.location, draft.locationId]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, chatMutation.isPending, chatError]);
+
   function openDetails() {
     setDraft(profile);
     setLocations([]);
@@ -153,6 +173,62 @@ export function BillsDashboard() {
       gender: draft.gender,
     });
     dialogRef.current?.close();
+  }
+
+  function runChat(messages: ChatPayloadMessage[]) {
+    const payload = trimChatHistory(messages);
+    lastChatRequestRef.current = payload;
+    setChatError(null);
+    chatMutation.mutate(
+      { messages: payload },
+      {
+        onSuccess(data) {
+          setChatMessages((current) => [
+            ...current,
+            {
+              id: crypto.randomUUID(),
+              role: data.message.role,
+              content: data.message.content,
+            },
+          ]);
+        },
+        onError(error) {
+          setChatError(
+            error.message ||
+              "Ledgerline could not answer right now. Please try again.",
+          );
+        },
+      },
+    );
+  }
+
+  function sendChatMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const content = chatDraft.trim();
+    if (!content || chatMutation.isPending) return;
+
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content,
+    };
+    const nextMessages = [...chatMessages, userMessage];
+    setChatMessages(nextMessages);
+    setChatDraft("");
+    runChat(nextMessages);
+  }
+
+  function retryChat() {
+    if (lastChatRequestRef.current && !chatMutation.isPending) {
+      runChat(lastChatRequestRef.current);
+    }
+  }
+
+  function clearChat() {
+    setChatMessages([]);
+    setChatDraft("");
+    setChatError(null);
+    lastChatRequestRef.current = null;
   }
 
   return (
@@ -312,7 +388,7 @@ export function BillsDashboard() {
             >
               L
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="font-display text-[22px] leading-tight">
                 Ask Ledgerline
               </h2>
@@ -320,52 +396,128 @@ export function BillsDashboard() {
                 AI chat workspace
               </p>
             </div>
-          </div>
-          <div className="flex flex-1 flex-col justify-center px-7 py-10 text-center">
-            <div
-              className="border-primary/20 mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full border"
-              aria-hidden="true"
-            >
-              <svg width="25" height="25" viewBox="0 0 25 25" fill="none">
-                <path
-                  d="M5 6.5h15v11H10l-5 3v-14Z"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M9 11h7M9 14h5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <h3 className="font-display text-[25px]">
-              Make sense of what matters.
-            </h3>
-            <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[13px] leading-6">
-              Ask questions about bills and their impact when chat is connected.
-            </p>
-          </div>
-          <div className="border-primary/20 border-t p-4">
-            <div className="border-primary/25 bg-surface-cream flex items-center gap-2 rounded-[14px] border p-2">
-              <input
-                type="text"
-                disabled
-                placeholder="Chat is not connected yet"
-                aria-label="Chat is not connected yet"
-                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-not-allowed"
-              />
+            {chatMessages.length > 0 && (
               <button
                 type="button"
-                disabled
-                aria-label="Send message unavailable"
-                className="bg-primary/45 text-surface-cream flex h-9 w-9 items-center justify-center rounded-lg disabled:cursor-not-allowed"
+                onClick={clearChat}
+                disabled={chatMutation.isPending}
+                className="font-mono-ui text-primary/65 hover:text-primary cursor-pointer text-[9px] tracking-[0.1em] uppercase disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {chatMessages.length === 0 && !chatMutation.isPending ? (
+            <div className="flex flex-1 flex-col justify-center px-7 py-10 text-center">
+              <div
+                className="border-primary/20 mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full border"
+                aria-hidden="true"
+              >
+                <svg width="25" height="25" viewBox="0 0 25 25" fill="none">
+                  <path
+                    d="M5 6.5h15v11H10l-5 3v-14Z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9 11h7M9 14h5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+              <h3 className="font-display text-[25px]">
+                Make sense of what matters.
+              </h3>
+              <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[13px] leading-6">
+                Ask about legislation, civic processes, and what a bill could
+                mean in plain language.
+              </p>
+            </div>
+          ) : (
+            <div
+              role="log"
+              aria-live="polite"
+              aria-label="Conversation with Ledgerline"
+              className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5"
+            >
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[13px] leading-5 whitespace-pre-wrap ${
+                      message.role === "user"
+                        ? "bg-primary text-surface-cream rounded-br-sm"
+                        : "bg-surface-cream border-primary/15 rounded-bl-sm border"
+                    }`}
+                  >
+                    {message.content}
+                  </div>
+                </div>
+              ))}
+              {chatMutation.isPending && (
+                <div
+                  className="flex justify-start"
+                  aria-label="Ledgerline is thinking"
+                >
+                  <div className="bg-surface-cream border-primary/15 flex gap-1 rounded-[16px] rounded-bl-sm border px-4 py-4">
+                    {[0, 1, 2].map((dot) => (
+                      <span
+                        key={dot}
+                        className="bg-primary/55 chat-thinking-dot h-1.5 w-1.5 rounded-full"
+                        style={{ animationDelay: `${dot * 160}ms` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+          )}
+          <div className="border-primary/20 border-t p-4">
+            {chatError && (
+              <div
+                role="alert"
+                className="border-primary/20 bg-surface-cream mb-3 rounded-xl border px-3 py-2.5 text-[11px] leading-4"
+              >
+                <p>{chatError}</p>
+                <button
+                  type="button"
+                  onClick={retryChat}
+                  disabled={chatMutation.isPending}
+                  className="font-mono-ui mt-2 cursor-pointer text-[9px] tracking-[0.1em] uppercase underline underline-offset-2 disabled:cursor-not-allowed"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+            <form
+              onSubmit={sendChatMessage}
+              className="border-primary/25 bg-surface-cream flex items-center gap-2 rounded-[14px] border p-2"
+            >
+              <input
+                type="text"
+                value={chatDraft}
+                maxLength={2_000}
+                onChange={(event) => setChatDraft(event.target.value)}
+                disabled={chatMutation.isPending}
+                placeholder="Ask Ledgerline…"
+                aria-label="Message Ledgerline"
+                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
+              />
+              <button
+                type="submit"
+                disabled={!chatDraft.trim() || chatMutation.isPending}
+                aria-label="Send message"
+                className="bg-primary text-surface-cream flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
               >
                 ↗
               </button>
-            </div>
+            </form>
           </div>
         </aside>
       </div>
@@ -555,4 +707,19 @@ export function BillsDashboard() {
       </dialog>
     </div>
   );
+}
+
+function trimChatHistory(messages: ChatPayloadMessage[]) {
+  const payload = messages.slice(-12);
+  let totalCharacters = payload.reduce(
+    (total, message) => total + message.content.length,
+    0,
+  );
+
+  while (payload.length > 1 && totalCharacters > 12_000) {
+    const removed = payload.shift();
+    totalCharacters -= removed?.content.length ?? 0;
+  }
+
+  return payload;
 }
