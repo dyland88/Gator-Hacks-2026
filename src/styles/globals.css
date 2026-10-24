@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: #0b0f0c;
+  --color-foreground: #f2f5f0;
+  --color-accent: #ff7a1a;
+
+  --font-display: "Space Mono", ui-monospace, monospace;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger > * {
+  opacity: 0;
+  animation: rise 0.5s ease-out forwards;
+}
+
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.15s; }
+.stagger > *:nth-child(3) { animation-delay: 0.25s; }
+.stagger > *:nth-child(4) { animation-delay: 0.35s; }
