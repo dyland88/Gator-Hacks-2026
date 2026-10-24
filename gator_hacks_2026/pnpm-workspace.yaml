@@ -1,0 +1,10 @@
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  unrs-resolver: true
+permissions:
+  '@trpc/client':
+    skills: true
+  '@trpc/server':
+    skills: true
