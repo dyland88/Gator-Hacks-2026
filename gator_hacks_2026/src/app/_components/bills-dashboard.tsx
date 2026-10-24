@@ -256,14 +256,7 @@ export function BillsDashboard() {
                   </button>
                 </div>
                 <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
-                  <span
-                    className={
-                      sectionIndex === 0 ? "text-bills-blue" : undefined
-                    }
-                  >
-                    {currentSection}
-                  </span>{" "}
-                  for you
+                  {currentSection} for you
                 </h1>
               </div>
               <p className="font-mono-ui text-primary/60 mt-2 pl-12 text-[11px] tracking-[0.08em]">
