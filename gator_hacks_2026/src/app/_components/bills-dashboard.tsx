@@ -47,6 +47,9 @@ export function BillsDashboard() {
     "idle" | "loading" | "empty" | "error"
   >("idle");
   const currentSection = sections[sectionIndex] ?? sections[0];
+  const previousSection =
+    sections[(sectionIndex - 1 + sections.length) % sections.length] ??
+    sections[0];
   const nextSection =
     sections[(sectionIndex + 1) % sections.length] ?? sections[0];
 
@@ -195,36 +198,76 @@ export function BillsDashboard() {
                 Your legislative feed
               </p>
               <div className="mt-3 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSectionIndex(
-                      (current) => (current + 1) % sections.length,
-                    )
-                  }
-                  aria-label={`Switch to ${nextSection}`}
-                  title={`Switch to ${nextSection}`}
-                  className="text-primary hover:bg-surface-tan flex h-11 w-9 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
-                >
-                  <svg
-                    width="20"
-                    height="36"
-                    viewBox="0 0 20 36"
-                    fill="none"
-                    aria-hidden="true"
+                <div className="flex w-9 flex-col" aria-label="Switch views">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSectionIndex(
+                        (current) =>
+                          (current - 1 + sections.length) % sections.length,
+                      )
+                    }
+                    aria-label={`Switch to ${previousSection}`}
+                    title={`Switch to ${previousSection}`}
+                    className="text-primary hover:bg-surface-tan flex h-5 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
                   >
-                    <path
-                      d="M10 1 14 6 10 11 6 6 10 1ZM10 13 14 18 10 23 6 18 10 13ZM10 25 14 30 10 35 6 30 10 25Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </button>
-                <h1 className="font-display text-[42px] leading-none font-semibold tracking-[-0.02em]">
-                  {currentSection}
+                    <svg
+                      width="18"
+                      height="12"
+                      viewBox="0 0 18 12"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m3 9 6-6 6 6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSectionIndex(
+                        (current) => (current + 1) % sections.length,
+                      )
+                    }
+                    aria-label={`Switch to ${nextSection}`}
+                    title={`Switch to ${nextSection}`}
+                    className="text-primary hover:bg-surface-tan flex h-5 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    <svg
+                      width="18"
+                      height="12"
+                      viewBox="0 0 18 12"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m3 3 6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
+                  <span
+                    className={
+                      sectionIndex === 0 ? "text-bills-blue" : undefined
+                    }
+                  >
+                    {currentSection}
+                  </span>{" "}
+                  for you
                 </h1>
               </div>
               <p className="font-mono-ui text-primary/60 mt-2 pl-12 text-[11px] tracking-[0.08em]">
-                {sectionIndex + 1} / {sections.length} · Select the icon to
+                {sectionIndex + 1} / {sections.length} · Use the arrows to
                 switch views
               </p>
             </div>
@@ -259,7 +302,7 @@ export function BillsDashboard() {
               <div
                 key={slot}
                 aria-label={`Empty ${currentSection.toLowerCase()} slot ${slot}`}
-                className={`bill-loading-slot border-primary/20 h-[190px] rounded-[20px] border ${sectionIndex === 0 ? "bg-bills-blue" : "bg-surface-tan/75"}`}
+                className="bill-loading-slot border-primary/20 bg-surface-tan/75 h-[190px] rounded-[20px] border"
               />
             ))}
           </div>
