@@ -2,11 +2,15 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { SignupDialog } from "~/app/_components/signup-dialog";
+import { supabase } from "~/lib/supabase-client";
+
 type Profile = {
   location: string;
   locationId: number | string | null;
   age: string;
   gender: string;
+  interests: string[];
 };
 
 type LocationResult = {
@@ -29,18 +33,31 @@ function locationLabel(place: LocationResult) {
 }
 
 const genderOptions = ["Woman", "Man", "Non-binary", "Prefer not to say"];
+const interestOptions = [
+  "Nature",
+  "Health",
+  "Education",
+  "Housing",
+  "Jobs",
+  "Transportation",
+  "Public safety",
+  "Civil rights",
+];
 const sections = ["Bills", "Amendments", "Elected officials"] as const;
 
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const signupDialogRef = useRef<HTMLDialogElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<Profile>({
     location: "",
     locationId: null,
     age: "",
     gender: "",
+    interests: [],
   });
   const [draft, setDraft] = useState<Profile>(profile);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [sectionIndex, setSectionIndex] = useState(0);
   const [locations, setLocations] = useState<LocationResult[]>([]);
   const [lookupStatus, setLookupStatus] = useState<
@@ -54,7 +71,40 @@ export function BillsDashboard() {
     sections[(sectionIndex + 1) % sections.length] ?? sections[0];
 
   useEffect(() => {
-    if (!dialogRef.current?.open) dialogRef.current?.showModal();
+    try {
+      const saved = window.localStorage.getItem("ledgerline-guest-onboarding");
+      if (saved) {
+        const stored = JSON.parse(saved) as {
+          profile?: Profile;
+          skipped?: boolean;
+        };
+        if (stored.profile) {
+          const restored = {
+            ...stored.profile,
+            interests: stored.profile.interests ?? [],
+          };
+          setProfile(restored);
+          setDraft(restored);
+          return;
+        }
+        if (stored.skipped) return;
+      }
+    } catch {
+      dialogRef.current?.showModal();
+      return;
+    }
+    dialogRef.current?.showModal();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    void supabase.auth.getUser().then(({ data }) => {
+      setSignedInEmail(data.user?.email ?? null);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedInEmail(session?.user.email ?? null);
+    });
+    return () => data.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -141,17 +191,26 @@ export function BillsDashboard() {
 
   function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (draft.locationId === null) {
+    if (draft.location.trim() && draft.locationId === null) {
       setLookupStatus("empty");
       locationInputRef.current?.focus();
       return;
     }
-    setProfile({
-      location: draft.location,
-      locationId: draft.locationId,
-      age: draft.age,
-      gender: draft.gender,
-    });
+    setProfile(draft);
+    window.localStorage.setItem(
+      "ledgerline-guest-onboarding",
+      JSON.stringify({ profile: draft }),
+    );
+    dialogRef.current?.close();
+  }
+
+  function skipOnboarding() {
+    if (!window.localStorage.getItem("ledgerline-guest-onboarding")) {
+      window.localStorage.setItem(
+        "ledgerline-guest-onboarding",
+        JSON.stringify({ skipped: true }),
+      );
+    }
     dialogRef.current?.close();
   }
 
@@ -185,9 +244,13 @@ export function BillsDashboard() {
             Ledgerline
           </span>
         </div>
-        <span className="font-mono-ui text-[11px] tracking-[0.12em] uppercase">
-          Workspace preview
-        </span>
+        <button
+          type="button"
+          onClick={() => signupDialogRef.current?.showModal()}
+          className="font-mono-ui border-surface-cream/50 hover:bg-surface-cream hover:text-primary cursor-pointer rounded-full border px-4 py-2 text-[11px] tracking-[0.12em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          {signedInEmail ? "Account" : "Sign up"}
+        </button>
       </header>
 
       <div className="mx-auto grid w-full max-w-[1440px] flex-1 gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_350px] lg:px-12">
@@ -256,7 +319,12 @@ export function BillsDashboard() {
                   </button>
                 </div>
                 <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
-                  {currentSection} for you
+                  <span
+                    key={currentSection}
+                    className="section-switch-blink inline-block"
+                  >
+                    {currentSection} for you
+                  </span>
                 </h1>
               </div>
               <p className="font-mono-ui text-primary/60 mt-2 pl-12 text-[11px] tracking-[0.08em]">
@@ -269,26 +337,51 @@ export function BillsDashboard() {
               onClick={openDetails}
               className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui cursor-pointer rounded-full border px-4 py-2.5 text-[11px] tracking-[0.1em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-4"
             >
-              {profile.location ? "Edit details" : "Add details"}
+              {profile.location || profile.interests.length
+                ? "Edit preferences"
+                : "Set up feed"}
             </button>
           </div>
 
-          {profile.location && (
+          {(profile.location || profile.age || profile.gender) && (
             <p className="font-mono-ui text-primary/65 mb-6 text-[11px] tracking-[0.08em]">
-              {profile.location} <span aria-hidden="true">·</span> Age{" "}
-              {profile.age}
+              {profile.location}
+              {profile.age && (
+                <>
+                  {profile.location && " · "}Age {profile.age}
+                </>
+              )}
               {profile.gender && (
                 <>
-                  {" "}
-                  <span aria-hidden="true">·</span> {profile.gender}
+                  {(profile.location || profile.age) && " · "}
+                  {profile.gender}
                 </>
               )}
             </p>
           )}
 
+          {profile.interests.length > 0 && (
+            <div
+              className="mb-6 flex flex-wrap items-center gap-2"
+              aria-label="Your interests"
+            >
+              <span className="font-mono-ui text-primary/65 mr-1 text-[11px] tracking-[0.08em] uppercase">
+                Following
+              </span>
+              {profile.interests.map((interest) => (
+                <span
+                  key={interest}
+                  className="border-primary/30 bg-surface-cream rounded-full border px-3 py-1 text-[12px]"
+                >
+                  {interest}
+                </span>
+              ))}
+            </div>
+          )}
+
           <div
             key={currentSection}
-            className="grid gap-5"
+            className="section-switch-blink grid gap-5"
             aria-label={`${currentSection} results`}
           >
             {[1, 2, 3].map((slot) => (
@@ -373,7 +466,7 @@ export function BillsDashboard() {
       <dialog
         ref={dialogRef}
         aria-labelledby="profile-title"
-        className="bg-surface-cream text-primary font-body border-primary/20 m-auto w-[min(92vw,460px)] rounded-[24px] border p-0 shadow-2xl backdrop:bg-gray-500/65"
+        className="bg-surface-cream text-primary font-body border-primary/20 m-auto max-h-[90vh] w-[min(92vw,560px)] overflow-y-auto rounded-[24px] border p-0 shadow-2xl backdrop:bg-gray-500/65"
       >
         <form onSubmit={saveProfile} className="p-7 sm:p-9">
           <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
@@ -383,21 +476,54 @@ export function BillsDashboard() {
             id="profile-title"
             className="font-display mt-3 text-[36px] leading-tight"
           >
-            A little about you.
+            Make this feed yours.
           </h2>
           <p className="text-primary/70 mt-3 text-sm leading-6">
-            Your details will help match bills when recommendations are
-            connected.
+            Choose what matters to you. Browsing is free and does not require an
+            account. Your choices are saved on this device. Bill recommendations
+            are not connected yet.
           </p>
           <div className="mt-7 grid gap-5">
+            <fieldset>
+              <legend className="text-[13px] font-semibold">
+                Topics you care about
+              </legend>
+              <p className="text-primary/65 mt-1 text-[11px]">
+                Pick any number of topics. You can change them later.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {interestOptions.map((interest) => {
+                  const selected = draft.interests.includes(interest);
+                  return (
+                    <button
+                      key={interest}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          interests: current.interests.includes(interest)
+                            ? current.interests.filter(
+                                (item) => item !== interest,
+                              )
+                            : [...current.interests, interest],
+                        }))
+                      }
+                      className={`cursor-pointer rounded-full border px-4 py-2 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selected ? "border-primary bg-primary text-surface-cream" : "border-primary/30 bg-surface-tan/40 hover:bg-surface-tan"}`}
+                    >
+                      {interest}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
             <div className="flex flex-col gap-2 text-[13px] font-semibold">
-              <label htmlFor="location-search">Location</label>
+              <label htmlFor="location-search">Location (optional)</label>
               <div className="relative">
                 <input
                   ref={locationInputRef}
                   id="location-search"
                   autoFocus
-                  required
                   type="text"
                   autoComplete="off"
                   role="combobox"
@@ -498,9 +624,8 @@ export function BillsDashboard() {
               </p>
             </div>
             <label className="flex flex-col gap-2 text-[13px] font-semibold">
-              Age
+              Age (optional)
               <input
-                required
                 type="number"
                 min="1"
                 max="120"
@@ -539,7 +664,7 @@ export function BillsDashboard() {
           <div className="mt-8 flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => dialogRef.current?.close()}
+              onClick={skipOnboarding}
               className="font-mono-ui cursor-pointer px-4 py-3 text-[11px] tracking-[0.08em] uppercase"
             >
               Not now
@@ -548,11 +673,12 @@ export function BillsDashboard() {
               type="submit"
               className="bg-primary text-surface-cream font-mono-ui cursor-pointer rounded-full px-6 py-3 text-[11px] tracking-[0.08em] uppercase"
             >
-              Save details
+              Save preferences
             </button>
           </div>
         </form>
       </dialog>
+      <SignupDialog dialogRef={signupDialogRef} signedInEmail={signedInEmail} />
     </div>
   );
 }

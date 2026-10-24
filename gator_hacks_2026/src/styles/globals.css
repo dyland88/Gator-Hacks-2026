@@ -18,6 +18,10 @@
   animation: bill-pulse 2.7s ease-in-out infinite;
 }
 
+.section-switch-blink {
+  animation: section-blink 560ms ease-in-out both;
+}
+
 .bill-loading-slot::after {
   position: absolute;
   inset: -50%;
@@ -49,6 +53,18 @@
   }
 }
 
+@keyframes section-blink {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  25%,
+  75%,
+  100% {
+    opacity: 1;
+  }
+}
+
 @keyframes bill-ripple {
   0% {
     opacity: 0;
@@ -66,7 +82,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bill-loading-slot,
-  .bill-loading-slot::after {
+  .bill-loading-slot::after,
+  .section-switch-blink {
     animation: none;
   }
 
