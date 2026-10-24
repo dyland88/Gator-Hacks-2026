@@ -1,6 +1,76 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Times New Roman", Times, serif;
+
+  --font-display: "Times New Roman", Times, serif;
+  --font-mono-ui: "Times New Roman", Times, serif;
+  --font-body: "Times New Roman", Times, serif;
+
+  --color-primary: #762028;
+  --color-surface-tan: #e5d3af;
+  --color-surface-cream: #f5efe1;
+}
+
+.bill-loading-slot {
+  position: relative;
+  overflow: hidden;
+  animation: bill-pulse 2.7s ease-in-out infinite;
+}
+
+.bill-loading-slot::after {
+  position: absolute;
+  inset: -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.55), transparent 65%);
+  content: "";
+  opacity: 0;
+  transform: scale(0.15);
+  animation: bill-ripple 2.7s ease-out infinite;
+}
+
+.bill-loading-slot:nth-child(2),
+.bill-loading-slot:nth-child(2)::after {
+  animation-delay: 0.35s;
+}
+
+.bill-loading-slot:nth-child(3),
+.bill-loading-slot:nth-child(3)::after {
+  animation-delay: 0.7s;
+}
+
+@keyframes bill-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+@keyframes bill-ripple {
+  0% {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+  18% {
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bill-loading-slot,
+  .bill-loading-slot::after {
+    animation: none;
+  }
+
+  .bill-loading-slot {
+    opacity: 1;
+  }
 }
