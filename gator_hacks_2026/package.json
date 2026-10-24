@@ -1,5 +1,5 @@
 {
-  "name": "gatorhack2026",
+  "name": "gator_hacks_2026",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -53,5 +53,5 @@
   "ct3aMetadata": {
     "initVersion": "7.40.0"
   },
-  "packageManager": "npm@11.8.0"
+  "packageManager": "pnpm@12.15.0"
 }

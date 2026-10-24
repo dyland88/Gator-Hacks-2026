@@ -26,7 +26,7 @@ const {
   Public,
   getRuntime,
   createParam,
-} = require("./runtime/wasm-engine-edge.js");
+} = require("./runtime/library.js");
 
 const Prisma = {};
 
@@ -77,6 +77,8 @@ Prisma.NullTypes = {
   AnyNull: objectEnumValues.classes.AnyNull,
 };
 
+const path = require("path");
+
 /**
  * Enums
  */
@@ -111,7 +113,7 @@ const config = {
     },
     output: {
       value:
-        "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gatorhack2026/generated/prisma",
+        "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gator_hacks_2026/generated/prisma",
       fromEnvVar: null,
     },
     config: {
@@ -126,7 +128,7 @@ const config = {
     ],
     previewFeatures: [],
     sourceFilePath:
-      "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gatorhack2026/prisma/schema.prisma",
+      "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gator_hacks_2026/prisma/schema.prisma",
     isCustomOutput: true,
   },
   relativeEnvPaths: {
@@ -153,45 +155,50 @@ const config = {
     "6173f79f1f1e8cae300b91aa9403ded205a6c79085b2f8c48fed8dd26c8c16cc",
   copyEngine: true,
 };
-config.dirname = "/";
+
+const fs = require("fs");
+
+config.dirname = __dirname;
+if (!fs.existsSync(path.join(__dirname, "schema.prisma"))) {
+  const alternativePaths = ["generated/prisma", "prisma"];
+
+  const alternativePath =
+    alternativePaths.find((altPath) => {
+      return fs.existsSync(path.join(process.cwd(), altPath, "schema.prisma"));
+    }) ?? alternativePaths[0];
+
+  config.dirname = path.join(process.cwd(), alternativePath);
+  config.isBundled = true;
+}
 
 config.runtimeDataModel = JSON.parse(
-  '{"models":{"Post":{"fields":[{"name":"id","kind":"scalar","type":"Int"},{"name":"name","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":null}},"enums":{},"types":{}}',
+  '{"models":{"Post":{"dbName":null,"schema":null,"fields":[{"name":"id","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":true,"isReadOnly":false,"hasDefaultValue":true,"type":"Int","nativeType":null,"default":{"name":"autoincrement","args":[]},"isGenerated":false,"isUpdatedAt":false},{"name":"name","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":false,"isReadOnly":false,"hasDefaultValue":false,"type":"String","nativeType":null,"isGenerated":false,"isUpdatedAt":false},{"name":"createdAt","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":false,"isReadOnly":false,"hasDefaultValue":true,"type":"DateTime","nativeType":null,"default":{"name":"now","args":[]},"isGenerated":false,"isUpdatedAt":false},{"name":"updatedAt","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":false,"isReadOnly":false,"hasDefaultValue":false,"type":"DateTime","nativeType":null,"isGenerated":false,"isUpdatedAt":true}],"primaryKey":null,"uniqueFields":[],"uniqueIndexes":[],"isGenerated":false}},"enums":{},"types":{}}',
 );
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel);
-config.engineWasm = {
-  getRuntime: async () => require("./query_engine_bg.js"),
-  getQueryEngineWasmModule: async () => {
-    const loader = (await import("#wasm-engine-loader")).default;
-    const engine = (await loader).default;
-    return engine;
-  },
-};
+config.engineWasm = undefined;
 config.compilerWasm = undefined;
 
-config.injectableEdgeEnv = () => ({
-  parsed: {
-    DATABASE_URL:
-      (typeof globalThis !== "undefined" && globalThis["DATABASE_URL"]) ||
-      (typeof process !== "undefined" &&
-        process.env &&
-        process.env.DATABASE_URL) ||
-      undefined,
-  },
-});
+const { warnEnvConflicts } = require("./runtime/library.js");
 
-if (
-  (typeof globalThis !== "undefined" && globalThis["DEBUG"]) ||
-  (typeof process !== "undefined" && process.env && process.env.DEBUG) ||
-  undefined
-) {
-  Debug.enable(
-    (typeof globalThis !== "undefined" && globalThis["DEBUG"]) ||
-      (typeof process !== "undefined" && process.env && process.env.DEBUG) ||
-      undefined,
-  );
-}
+warnEnvConflicts({
+  rootEnvPath:
+    config.relativeEnvPaths.rootEnvPath &&
+    path.resolve(config.dirname, config.relativeEnvPaths.rootEnvPath),
+  schemaEnvPath:
+    config.relativeEnvPaths.schemaEnvPath &&
+    path.resolve(config.dirname, config.relativeEnvPaths.schemaEnvPath),
+});
 
 const PrismaClient = getPrismaClient(config);
 exports.PrismaClient = PrismaClient;
 Object.assign(exports, Prisma);
+
+// file annotations for bundling tools to include these files
+path.join(__dirname, "libquery_engine-darwin-arm64.dylib.node");
+path.join(
+  process.cwd(),
+  "generated/prisma/libquery_engine-darwin-arm64.dylib.node",
+);
+// file annotations for bundling tools to include these files
+path.join(__dirname, "schema.prisma");
+path.join(process.cwd(), "generated/prisma/schema.prisma");

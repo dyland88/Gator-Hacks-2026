@@ -26,7 +26,7 @@ const {
   Public,
   getRuntime,
   createParam,
-} = require("./runtime/edge.js");
+} = require("./runtime/wasm-engine-edge.js");
 
 const Prisma = {};
 
@@ -111,7 +111,7 @@ const config = {
     },
     output: {
       value:
-        "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gatorhack2026/generated/prisma",
+        "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gator_hacks_2026/generated/prisma",
       fromEnvVar: null,
     },
     config: {
@@ -126,7 +126,7 @@ const config = {
     ],
     previewFeatures: [],
     sourceFilePath:
-      "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gatorhack2026/prisma/schema.prisma",
+      "/Users/jaedynpetaway/Desktop/Gator-Hacks-2026/gator_hacks_2026/prisma/schema.prisma",
     isCustomOutput: true,
   },
   relativeEnvPaths: {
@@ -156,10 +156,17 @@ const config = {
 config.dirname = "/";
 
 config.runtimeDataModel = JSON.parse(
-  '{"models":{"Post":{"dbName":null,"schema":null,"fields":[{"name":"id","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":true,"isReadOnly":false,"hasDefaultValue":true,"type":"Int","nativeType":null,"default":{"name":"autoincrement","args":[]},"isGenerated":false,"isUpdatedAt":false},{"name":"name","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":false,"isReadOnly":false,"hasDefaultValue":false,"type":"String","nativeType":null,"isGenerated":false,"isUpdatedAt":false},{"name":"createdAt","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":false,"isReadOnly":false,"hasDefaultValue":true,"type":"DateTime","nativeType":null,"default":{"name":"now","args":[]},"isGenerated":false,"isUpdatedAt":false},{"name":"updatedAt","kind":"scalar","isList":false,"isRequired":true,"isUnique":false,"isId":false,"isReadOnly":false,"hasDefaultValue":false,"type":"DateTime","nativeType":null,"isGenerated":false,"isUpdatedAt":true}],"primaryKey":null,"uniqueFields":[],"uniqueIndexes":[],"isGenerated":false}},"enums":{},"types":{}}',
+  '{"models":{"Post":{"fields":[{"name":"id","kind":"scalar","type":"Int"},{"name":"name","kind":"scalar","type":"String"},{"name":"createdAt","kind":"scalar","type":"DateTime"},{"name":"updatedAt","kind":"scalar","type":"DateTime"}],"dbName":null}},"enums":{},"types":{}}',
 );
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel);
-config.engineWasm = undefined;
+config.engineWasm = {
+  getRuntime: async () => require("./query_engine_bg.js"),
+  getQueryEngineWasmModule: async () => {
+    const loader = (await import("#wasm-engine-loader")).default;
+    const engine = (await loader).default;
+    return engine;
+  },
+};
 config.compilerWasm = undefined;
 
 config.injectableEdgeEnv = () => ({
