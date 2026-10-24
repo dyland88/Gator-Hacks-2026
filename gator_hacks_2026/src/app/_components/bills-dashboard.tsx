@@ -29,6 +29,7 @@ function locationLabel(place: LocationResult) {
 }
 
 const genderOptions = ["Woman", "Man", "Non-binary", "Prefer not to say"];
+const sections = ["Bills", "Amendments", "Elected officials"] as const;
 
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -40,10 +41,14 @@ export function BillsDashboard() {
     gender: "",
   });
   const [draft, setDraft] = useState<Profile>(profile);
+  const [sectionIndex, setSectionIndex] = useState(0);
   const [locations, setLocations] = useState<LocationResult[]>([]);
   const [lookupStatus, setLookupStatus] = useState<
     "idle" | "loading" | "empty" | "error"
   >("idle");
+  const currentSection = sections[sectionIndex] ?? sections[0];
+  const nextSection =
+    sections[(sectionIndex + 1) % sections.length] ?? sections[0];
 
   useEffect(() => {
     if (!dialogRef.current?.open) dialogRef.current?.showModal();
@@ -189,9 +194,39 @@ export function BillsDashboard() {
               <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
                 Your legislative feed
               </p>
-              <h1 className="font-display mt-3 text-[42px] leading-none font-semibold tracking-[-0.02em]">
-                Bills for you
-              </h1>
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSectionIndex(
+                      (current) => (current + 1) % sections.length,
+                    )
+                  }
+                  aria-label={`Switch to ${nextSection}`}
+                  title={`Switch to ${nextSection}`}
+                  className="text-primary hover:bg-surface-tan flex h-11 w-9 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  <svg
+                    width="20"
+                    height="36"
+                    viewBox="0 0 20 36"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M10 1 14 6 10 11 6 6 10 1ZM10 13 14 18 10 23 6 18 10 13ZM10 25 14 30 10 35 6 30 10 25Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
+                <h1 className="font-display text-[42px] leading-none font-semibold tracking-[-0.02em]">
+                  {currentSection}
+                </h1>
+              </div>
+              <p className="font-mono-ui text-primary/60 mt-2 pl-12 text-[11px] tracking-[0.08em]">
+                {sectionIndex + 1} / {sections.length} · Select the icon to
+                switch views
+              </p>
             </div>
             <button
               type="button"
@@ -215,12 +250,16 @@ export function BillsDashboard() {
             </p>
           )}
 
-          <div className="grid gap-5" aria-label="Bill results">
+          <div
+            key={currentSection}
+            className="grid gap-5"
+            aria-label={`${currentSection} results`}
+          >
             {[1, 2, 3].map((slot) => (
               <div
                 key={slot}
-                aria-label={`Empty bill slot ${slot}`}
-                className="bill-loading-slot border-primary/20 bg-surface-tan/75 h-[190px] rounded-[20px] border"
+                aria-label={`Empty ${currentSection.toLowerCase()} slot ${slot}`}
+                className={`bill-loading-slot border-primary/20 h-[190px] rounded-[20px] border ${sectionIndex === 0 ? "bg-bills-blue" : "bg-surface-tan/75"}`}
               />
             ))}
           </div>
