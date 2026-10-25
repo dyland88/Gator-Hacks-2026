@@ -262,7 +262,7 @@ export function CityResearchButton({
         onClick={() => dialogRef.current?.showModal()}
         className="bg-primary text-surface-cream font-mono-ui shrink-0 cursor-pointer rounded-full px-5 py-2.5 text-[14px] tracking-[0.08em] whitespace-nowrap uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
       >
-        Research city ordinances
+        Add City
       </button>
       <dialog
         ref={dialogRef}
@@ -273,7 +273,7 @@ export function CityResearchButton({
         {step === "search" ? (
           <div className="flex flex-col gap-4">
             <h2 id="city-research-title" className="font-display text-[26px]">
-              Research city ordinances
+              Add City
             </h2>
             <p className="text-primary/70 text-[14px] leading-6">
               Only U.S. cities can be researched right now.
