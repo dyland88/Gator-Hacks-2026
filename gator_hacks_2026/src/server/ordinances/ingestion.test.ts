@@ -417,6 +417,38 @@ describe("daily submission", () => {
 });
 
 describe("result persistence", () => {
+  it("keeps only relevance rules supported by the change excerpt and pins their source", async () => {
+    const { db, tx } = database();
+    const rule = {
+      ageMin: 65,
+      ageMax: null,
+      lifeCircumstances: ["Renter"],
+      evidenceExcerpt: "Renters aged 65 and older.",
+    };
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([
+          {
+            ...change,
+            evidenceExcerpt: `${change.evidenceExcerpt} ${rule.evidenceExcerpt}`,
+            relevanceRules: [
+              rule,
+              { ...rule, evidenceExcerpt: "Unsupported claim." },
+            ],
+          },
+        ]),
+      },
+      db,
+    );
+    expect(tx.ordinance.upsert.mock.calls[0]?.[0]).toMatchObject({
+      create: {
+        relevanceRules: [{ ...rule, evidenceUrl: change.evidenceUrl }],
+      },
+    });
+  });
+
   it("matches a normalized name when the URL changes or a previously missing number appears", async () => {
     const { db, ordinances, changes } = database();
     await completeIngestion(

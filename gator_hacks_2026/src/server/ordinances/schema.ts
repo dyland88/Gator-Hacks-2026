@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { interestOptions } from "~/lib/profile";
+import { interestOptions, lifeCircumstanceOptions } from "~/lib/profile";
+import { relevanceRulesSchema } from "~/lib/relevance";
 
 export const stages = [
   "introduced",
@@ -92,6 +93,7 @@ export const changeSchema = z.object({
   stage: z.enum(stages),
   originalStage: z.string().trim().min(1).max(300),
   topics: z.array(z.enum(interestOptions)).max(8),
+  relevanceRules: relevanceRulesSchema.optional(),
   sourceUrl,
   adoptedDate: dateSchema.nullable(),
   effectiveDate: dateSchema.nullable(),
@@ -161,6 +163,7 @@ export const agentJsonSchema = {
                 "stage",
                 "originalStage",
                 "topics",
+                "relevanceRules",
                 "sourceUrl",
                 "adoptedDate",
                 "effectiveDate",
@@ -184,6 +187,41 @@ export const agentJsonSchema = {
                 topics: {
                   type: "array",
                   items: { type: "string", enum: interestOptions },
+                },
+                relevanceRules: {
+                  type: "array",
+                  maxItems: 20,
+                  description:
+                    "Source-supported affected groups only; [] when unknown. Each rule is an alternative group. Within a rule, all criteria must apply together.",
+                  items: {
+                    type: "object",
+                    required: [
+                      "ageMin",
+                      "ageMax",
+                      "lifeCircumstances",
+                      "evidenceExcerpt",
+                    ],
+                    properties: {
+                      ageMin: {
+                        type: ["integer", "null"],
+                        minimum: 0,
+                        maximum: 120,
+                      },
+                      ageMax: {
+                        type: ["integer", "null"],
+                        minimum: 0,
+                        maximum: 120,
+                      },
+                      lifeCircumstances: {
+                        type: "array",
+                        items: {
+                          type: "string",
+                          enum: lifeCircumstanceOptions,
+                        },
+                      },
+                      evidenceExcerpt: { type: "string", maxLength: 2000 },
+                    },
+                  },
                 },
                 sourceUrl: { type: "string" },
                 adoptedDate: {

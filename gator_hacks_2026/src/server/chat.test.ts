@@ -5,7 +5,7 @@ import {
   chatInputSchema,
   ChatServiceError,
   createChatReply,
-  ledgerlineSystemInstruction,
+  legalSeagullSystemInstruction,
 } from "./chat";
 
 describe("chatInputSchema", () => {
@@ -52,7 +52,7 @@ describe("chatInputSchema", () => {
 });
 
 describe("createChatReply", () => {
-  it("uses the Ledgerline instruction and returns the model response", async () => {
+  it("uses the Legal Seagull instruction and returns the model response", async () => {
     const generateText = vi.fn(async () => ({
       text: "A bill is proposed legislation.",
       model: "test-gemma",
@@ -72,7 +72,7 @@ describe("createChatReply", () => {
     });
     expect(generateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        systemInstruction: ledgerlineSystemInstruction,
+        systemInstruction: legalSeagullSystemInstruction,
       }),
     );
   });

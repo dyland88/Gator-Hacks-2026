@@ -1,12 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { SignupDialog } from "~/app/_components/signup-dialog";
 import { OrdinanceFeed } from "~/app/_components/ordinance-feed";
 import {
-  genderOptions,
+  guestProfileSchema,
+  storedProfileInputSchema,
   interestOptions,
+  lifeCircumstanceOptions,
   profileInputSchema,
 } from "~/lib/profile";
 import { supabase } from "~/lib/supabase-client";
@@ -16,8 +19,8 @@ type Profile = {
   location: string;
   locationId: number | string | null;
   age: string;
-  gender: string;
   interests: string[];
+  lifeCircumstances: string[];
 };
 
 type LocationResult = {
@@ -55,8 +58,8 @@ export function BillsDashboard() {
     location: "",
     locationId: null,
     age: "",
-    gender: "",
     interests: [],
+    lifeCircumstances: [],
   });
   const [draft, setDraft] = useState<Profile>(profile);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
@@ -85,6 +88,20 @@ export function BillsDashboard() {
       );
     }
     try {
+      for (let index = window.localStorage.length - 1; index >= 0; index--) {
+        const key = window.localStorage.key(index);
+        if (!key?.startsWith("ledgerline-signup-profile:")) continue;
+        try {
+          const pending = storedProfileInputSchema.safeParse(
+            JSON.parse(window.localStorage.getItem(key) ?? "null"),
+          );
+          if (pending.success)
+            window.localStorage.setItem(key, JSON.stringify(pending.data));
+          else window.localStorage.removeItem(key);
+        } catch {
+          window.localStorage.removeItem(key);
+        }
+      }
       const saved = window.localStorage.getItem("ledgerline-guest-onboarding");
       if (saved) {
         const stored = JSON.parse(saved) as {
@@ -92,15 +109,22 @@ export function BillsDashboard() {
           skipped?: boolean;
         };
         if (stored.profile) {
-          const restored = {
-            ...stored.profile,
-            interests: stored.profile.interests ?? [],
-          };
+          const restored = guestProfileSchema.parse(stored.profile);
+          window.localStorage.setItem(
+            "ledgerline-guest-onboarding",
+            JSON.stringify({ profile: restored }),
+          );
           setProfile(restored);
           setDraft(restored);
           return;
         }
-        if (stored.skipped) return;
+        if (stored.skipped) {
+          window.localStorage.setItem(
+            "ledgerline-guest-onboarding",
+            JSON.stringify({ skipped: true }),
+          );
+          return;
+        }
       }
     } catch {
       dialogRef.current?.showModal();
@@ -121,8 +145,8 @@ export function BillsDashboard() {
           location: "",
           locationId: null,
           age: "",
-          gender: "",
           interests: [],
+          lifeCircumstances: [],
         };
         setProfile(empty);
         setDraft(empty);
@@ -149,13 +173,15 @@ export function BillsDashboard() {
         const pendingKey = `ledgerline-signup-profile:${signedInId}`;
         const pending = window.localStorage.getItem(pendingKey);
         if (pending) {
-          const parsed = profileInputSchema.safeParse(JSON.parse(pending));
+          const parsed = storedProfileInputSchema.safeParse(
+            JSON.parse(pending),
+          );
           const isEmpty =
             !stored ||
             (!stored.tags.length &&
               stored.age === null &&
               !stored.location &&
-              !stored.gender);
+              !stored.life_circumstances?.length);
           if (parsed.success && isEmpty) {
             stored = await utils.client.profile.save.mutate(parsed.data);
           }
@@ -166,8 +192,8 @@ export function BillsDashboard() {
           location: stored?.location ?? "",
           locationId: stored?.location_id ?? null,
           age: stored?.age?.toString() ?? "",
-          gender: stored?.gender ?? "",
           interests: stored?.tags ?? [],
+          lifeCircumstances: stored?.life_circumstances ?? [],
         };
         setProfile(restored);
         setDraft(restored);
@@ -283,10 +309,10 @@ export function BillsDashboard() {
     setProfileError(null);
     const result = profileInputSchema.safeParse({
       tags: draft.interests,
+      lifeCircumstances: draft.lifeCircumstances,
       age: draft.age ? Number(draft.age) : null,
       location: draft.location || null,
       locationId: draft.locationId === null ? null : String(draft.locationId),
-      gender: draft.gender || null,
     });
     if (!result.success) {
       setProfileError(
@@ -342,7 +368,7 @@ export function BillsDashboard() {
         onError(error) {
           setChatError(
             error.message ||
-              "Ledgerline could not answer right now. Please try again.",
+              "Legal Seagull could not answer right now. Please try again.",
           );
         },
       },
@@ -390,11 +416,12 @@ export function BillsDashboard() {
     >
       <header className="bg-primary text-surface-cream flex h-16 flex-none items-center justify-between px-6 sm:px-10">
         <div className="flex items-center gap-2.5">
-          <svg
-            width="30"
-            height="16"
-            viewBox="0 0 30 16"
-            fill="none"
+          <Image
+            src="/images/seagull.png"
+            alt=""
+            width={36}
+            height={36}
+            className="shrink-0 object-contain brightness-0 invert"
             aria-hidden="true"
           >
             <path
@@ -501,18 +528,12 @@ export function BillsDashboard() {
             </button>
           </div>
 
-          {(profile.location || profile.age || profile.gender) && (
-            <p className="font-mono-ui text-primary/65 mb-6 text-[14px] tracking-[0.08em]">
+          {(profile.location || profile.age) && (
+            <p className="font-mono-ui text-primary/65 mb-6 text-[11px] tracking-[0.08em]">
               {profile.location}
               {profile.age && (
                 <>
                   {profile.location && " · "}Age {profile.age}
-                </>
-              )}
-              {profile.gender && (
-                <>
-                  {(profile.location || profile.age) && " · "}
-                  {profile.gender}
                 </>
               )}
             </p>
@@ -541,6 +562,8 @@ export function BillsDashboard() {
             key={`${signedInId ?? "guest"}:${profile.location}:${profile.interests.join("|")}`}
             profileLocation={profile.location}
             interests={profile.interests}
+            age={profile.age ? Number(profile.age) : null}
+            lifeCircumstances={profile.lifeCircumstances}
             section={currentSection}
           />
         </main>
@@ -551,14 +574,20 @@ export function BillsDashboard() {
         >
           <div className="border-primary/20 flex items-center gap-3 border-b px-6 py-5">
             <div
-              className="bg-primary text-surface-cream font-display flex h-10 w-10 items-center justify-center rounded-full text-xl italic"
+              className="bg-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
               aria-hidden="true"
             >
-              L
+              <Image
+                src="/images/seagull.png"
+                alt=""
+                width={30}
+                height={30}
+                className="object-contain brightness-0 invert"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-display text-[22px] leading-tight">
-                Ask Ledgerline
+                Ask Legal Seagull
               </h2>
               <p className="font-mono-ui text-primary/60 text-[14px] tracking-[0.1em] uppercase">
                 AI chat workspace
@@ -608,7 +637,7 @@ export function BillsDashboard() {
             <div
               role="log"
               aria-live="polite"
-              aria-label="Conversation with Ledgerline"
+              aria-label="Conversation with Legal Seagull"
               className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5"
             >
               {chatMessages.map((message) => (
@@ -630,7 +659,7 @@ export function BillsDashboard() {
               {chatMutation.isPending && (
                 <div
                   className="flex justify-start"
-                  aria-label="Ledgerline is thinking"
+                  aria-label="Legal Seagull is thinking"
                 >
                   <div className="bg-surface-cream border-primary/15 flex gap-1 rounded-[16px] rounded-bl-sm border px-4 py-4">
                     {[0, 1, 2].map((dot) => (
@@ -673,9 +702,9 @@ export function BillsDashboard() {
                 maxLength={2_000}
                 onChange={(event) => setChatDraft(event.target.value)}
                 disabled={chatMutation.isPending}
-                placeholder="Ask Ledgerline…"
-                aria-label="Message Ledgerline"
-                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[14px] outline-none disabled:cursor-wait"
+                placeholder="Ask Legal Seagull…"
+                aria-label="Message Legal Seagull"
+                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
               />
               <button
                 type="submit"
@@ -710,7 +739,8 @@ export function BillsDashboard() {
             {signedInId
               ? "Your choices are saved to your account."
               : "Your choices are saved on this device. Sign in to save them to your account."}{" "}
-            Your location and topics help filter the local ordinance feed.
+            Your location and topics filter the feed. Optional age and life
+            circumstances highlight source-supported relevance.
           </p>
           <div className="mt-7 grid gap-5">
             <fieldset>
@@ -853,10 +883,11 @@ export function BillsDashboard() {
               </p>
             </div>
             <label className="flex flex-col gap-2 text-[14px] font-semibold">
-              Age (optional)
+              Age for relevance (optional)
               <input
                 type="number"
                 min="1"
+                step="1"
                 max="120"
                 value={draft.age}
                 onChange={(event) =>
@@ -865,31 +896,52 @@ export function BillsDashboard() {
                     age: event.target.value,
                   }))
                 }
-                placeholder="Your age"
+                placeholder="Your age in years"
                 className="border-primary/25 bg-surface-tan/50 rounded-lg border px-4 py-3 text-[14px] font-normal focus-visible:outline-2 focus-visible:outline-offset-2"
               />
             </label>
-            <label className="flex flex-col gap-2 text-[14px] font-semibold">
-              Gender (optional)
-              <select
-                value={draft.gender}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    gender: event.target.value,
-                  }))
-                }
-                className="border-primary/25 bg-surface-tan/50 rounded-lg border px-4 py-3 text-[14px] font-normal focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                <option value="">Select</option>
-                {genderOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
+          <fieldset className="border-primary/20 mt-6 border-t pt-5">
+            <legend className="text-[13px] font-semibold">
+              Life circumstances (optional)
+            </legend>
+            <p
+              id="circumstances-help"
+              className="text-primary/70 mt-2 text-[12px] leading-5"
+            >
+              Choose any that apply. Your age and these choices highlight bills
+              that explicitly affect people in your situation. They do not
+              determine eligibility or hide other bills. Clear any choice to
+              stop using it. These details are not sent to AI services.
+            </p>
+            <div
+              className="mt-3 flex flex-wrap gap-2"
+              aria-describedby="circumstances-help"
+            >
+              {lifeCircumstanceOptions.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={draft.lifeCircumstances.includes(value)}
+                  onClick={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      lifeCircumstances: current.lifeCircumstances.includes(
+                        value,
+                      )
+                        ? current.lifeCircumstances.filter(
+                            (item) => item !== value,
+                          )
+                        : [...current.lifeCircumstances, value],
+                    }))
+                  }
+                  className={`cursor-pointer rounded-full border px-3 py-2 text-[12px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(value) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           {profileError && (
             <p role="alert" className="mt-4 text-sm">
               {profileError}
@@ -919,11 +971,11 @@ export function BillsDashboard() {
         onAccountCreated={(userId) => {
           const parsed = profileInputSchema.safeParse({
             tags: profile.interests,
+            lifeCircumstances: profile.lifeCircumstances,
             age: profile.age ? Number(profile.age) : null,
             location: profile.location || null,
             locationId:
               profile.locationId === null ? null : String(profile.locationId),
-            gender: profile.gender || null,
           });
           if (parsed.success) {
             try {

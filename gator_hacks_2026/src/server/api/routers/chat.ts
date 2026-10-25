@@ -33,7 +33,7 @@ export const chatRouter = createTRPCRouter({
 
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Ledgerline could not answer right now. Please try again.",
+        message: "Legal Seagull could not answer right now. Please try again.",
       });
     }
   }),

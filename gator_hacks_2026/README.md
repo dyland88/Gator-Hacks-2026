@@ -6,9 +6,25 @@ We are using postgresql with supabase
 
 ## Daily municipal ordinance ingestion
 
-Ledgerline uses Firecrawl **Agent** (`POST /v2/agent`), not `/scrape` or `/extract`, to research ordinance activity across saved users' U.S. cities. Firecrawl announced Agent on [December 18, 2025](https://www.firecrawl.dev/blog/introducing-agent), within the past year for the October 2026 hackathon. See the [Agent API](https://docs.firecrawl.dev/features/agent) and [webhook signature documentation](https://docs.firecrawl.dev/webhooks/security).
+Legal Seagull uses Firecrawl **Agent** (`POST /v2/agent`), not `/scrape` or `/extract`, to research ordinance activity across saved users' U.S. cities. Firecrawl announced Agent on [December 18, 2025](https://www.firecrawl.dev/blog/introducing-agent), within the past year for the October 2026 hackathon. See the [Agent API](https://docs.firecrawl.dev/features/agent) and [webhook signature documentation](https://docs.firecrawl.dev/webhooks/security).
 
 The backend stores current ordinance snapshots and dated change history. The dashboard displays those records with descriptions, source links, topic tags, and segmented legislative-stage indicators. Chat retrieval and email delivery remain deferred. Guest preferences remain browser-only and do not determine monitored cities.
+
+### Age and life circumstances
+
+Feed preferences include optional age and multiple life circumstances, such as student, renter, parent or guardian, caregiver, and small-business owner. Guests save these on their device; signed-in users save them to their own profile under RLS. Clear the age field or deselect circumstances to stop using them.
+
+Ingestion extracts `relevanceRules` once per ordinance update, using explicit affected populations and inclusive age thresholds from official sources. Each rule requires a supporting excerpt contained in the change evidence and retains its source URL. All criteria within a rule must match; separate rules describe alternative groups. Missing metadata or age is treated as unknown, and age never implies a circumstance. Existing records start with no rules and acquire metadata on future ingestion updates.
+
+The browser matches these rules to the profile, displays supporting excerpts, and optionally puts matches first among loaded results while retaining other bills. Location and manually selected topics still filter the results. Matching does not establish program eligibility. Profile demographics and circumstances are not sent to Firecrawl or Gemma. The shared `matchRelevance` helper can also support future digest generation; email delivery is not implemented.
+
+Apply both additive SQL updates before deploying this feature:
+
+```text
+pnpm db:profiles
+pnpm db:ordinances
+pnpm exec prisma generate
+```
 
 ### Configuration and deployment
 
@@ -42,7 +58,7 @@ Set the Vercel project Root Directory to `gator_hacks_2026` so its `vercel.json`
 
 Vercel sends `Authorization: Bearer <CRON_SECRET>`. Both routes reject unauthenticated requests and disable caching. Hobby schedules can arrive within the scheduled hour, so the reporting window is fixed at 06:00 UTC rather than invocation time. [Vercel cron behavior](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
 
-For example, the October 24 run asks about `[2026-10-23T06:00:00Z, 2026-10-24T06:00:00Z)`. The first deployment does not backfill earlier history. The profile's city/state/country label is normalized, removing ZIP prefixes and combining ZIP/city search IDs. Only recognized U.S. states and Washington, DC are eligible; missing IDs, ambiguous labels, territories, and non-U.S. labels are skipped and counted. No age, gender, interests, account IDs, or email addresses are sent to Firecrawl.
+For example, the October 24 run asks about `[2026-10-23T06:00:00Z, 2026-10-24T06:00:00Z)`. The first deployment does not backfill earlier history. The profile's city/state/country label is normalized, removing ZIP prefixes and combining ZIP/city search IDs. Only recognized U.S. states and Washington, DC are eligible; missing IDs, ambiguous labels, territories, and non-U.S. labels are skipped and counted. No age, life circumstances, interests, account IDs, or email addresses are sent to Firecrawl.
 
 ### Completion and recovery
 
@@ -137,7 +153,7 @@ pnpm db:profiles
 pnpm exec prisma generate
 ```
 
-The SQL is safe to rerun. It creates `public.user_profiles`, an `auth.users` foreign key with cascading deletion, validation checks, owner-only RLS policies, timestamps, and a signup trigger. Existing auth users receive an empty profile. Supabase Auth owns emails and passwords; `user_profiles` stores tags, age, location, location ID, and gender. Use `db:profiles` to provision these database objects; `prisma db push` alone does not preserve the complete auth integration.
+The SQL is safe to rerun. It creates `public.user_profiles`, an `auth.users` foreign key with cascading deletion, validation checks, owner-only RLS policies, timestamps, and a signup trigger. Existing auth users receive an empty profile. Supabase Auth owns emails and passwords; `user_profiles` stores tags, optional age, life circumstances, location, and location ID. Use `db:profiles` to provision these database objects; `prisma db push` alone does not preserve the complete auth integration.
 
 Accounts support email/password signup, sign-in, sign-out, email confirmation, password recovery, and cookie-based sessions. Signed-in preferences are loaded and saved through authenticated tRPC procedures using the user's Supabase session and RLS. Guest preferences stay on the device. Preferences selected before signup are transferred on the first sign-in on that device, without overwriting an existing populated account profile.
 

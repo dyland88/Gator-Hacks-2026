@@ -132,9 +132,9 @@ exports.Prisma.UserProfileScalarFieldEnum = {
   id: 'id',
   tags: 'tags',
   age: 'age',
+  lifeCircumstances: 'lifeCircumstances',
   location: 'location',
   locationId: 'locationId',
-  gender: 'gender',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -173,6 +173,7 @@ exports.Prisma.OrdinanceScalarFieldEnum = {
   stage: 'stage',
   originalStage: 'originalStage',
   topics: 'topics',
+  relevanceRules: 'relevanceRules',
   sourceUrl: 'sourceUrl',
   adoptedDate: 'adoptedDate',
   effectiveDate: 'effectiveDate',
