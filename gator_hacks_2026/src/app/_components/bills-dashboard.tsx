@@ -368,7 +368,7 @@ export function BillsDashboard() {
         onError(error) {
           setChatError(
             error.message ||
-              "Legal Seagull could not answer right now. Please try again.",
+            "Legal Seagull could not answer right now. Please try again.",
           );
         },
       },
@@ -415,12 +415,12 @@ export function BillsDashboard() {
       }}
     >
       <header className="bg-primary text-surface-cream flex h-16 flex-none items-center justify-between px-6 sm:px-10">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-4">
           <Image
             src="/images/seagull.png"
             alt=""
-            width={36}
-            height={36}
+            width={28}
+            height={28}
             className="shrink-0 object-contain brightness-0 invert"
             aria-hidden="true"
           />
@@ -573,8 +573,8 @@ export function BillsDashboard() {
               <Image
                 src="/images/seagull.png"
                 alt=""
-                width={30}
-                height={30}
+                width={25}
+                height={25}
                 className="object-contain brightness-0 invert"
               />
             </div>
@@ -639,11 +639,10 @@ export function BillsDashboard() {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[13px] leading-5 whitespace-pre-wrap ${
-                      message.role === "user"
-                        ? "bg-primary text-surface-cream rounded-br-sm"
-                        : "bg-surface-cream border-primary/15 rounded-bl-sm border"
-                    }`}
+                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[13px] leading-5 whitespace-pre-wrap ${message.role === "user"
+                      ? "bg-primary text-surface-cream rounded-br-sm"
+                      : "bg-surface-cream border-primary/15 rounded-bl-sm border"
+                      }`}
                   >
                     {message.content}
                   </div>
@@ -756,8 +755,8 @@ export function BillsDashboard() {
                           ...current,
                           interests: current.interests.includes(interest)
                             ? current.interests.filter(
-                                (item) => item !== interest,
-                              )
+                              (item) => item !== interest,
+                            )
                             : [...current.interests, interest],
                         }))
                       }
@@ -923,8 +922,8 @@ export function BillsDashboard() {
                         value,
                       )
                         ? current.lifeCircumstances.filter(
-                            (item) => item !== value,
-                          )
+                          (item) => item !== value,
+                        )
                         : [...current.lifeCircumstances, value],
                     }))
                   }
