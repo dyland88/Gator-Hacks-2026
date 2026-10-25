@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { SignupDialog } from "~/app/_components/signup-dialog";
+import {
+  genderOptions,
+  interestOptions,
+  profileInputSchema,
+} from "~/lib/profile";
 import { supabase } from "~/lib/supabase-client";
 import { api } from "~/trpc/react";
 
@@ -41,18 +46,7 @@ function locationLabel(place: LocationResult) {
   return place.postcode ? `${place.postcode} — ${placeName}` : placeName;
 }
 
-const genderOptions = ["Woman", "Man", "Non-binary", "Prefer not to say"];
-const interestOptions = [
-  "Nature",
-  "Health",
-  "Education",
-  "Housing",
-  "Jobs",
-  "Transportation",
-  "Public safety",
-  "Civil rights",
-];
-const sections = ["Bills", "Amendments", "Elected officials"] as const;
+const sections = ["Bills", "Amendments"] as const;
 
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -69,7 +63,15 @@ export function BillsDashboard() {
   });
   const [draft, setDraft] = useState<Profile>(profile);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
-  const [sectionIndex, setSectionIndex] = useState(0);
+  const [signedInId, setSignedInId] = useState<string | null>(null);
+  const activeUserRef = useRef<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const utils = api.useUtils();
+  const saveProfileMutation = api.profile.save.useMutation();
+  const [currentSection, setCurrentSection] =
+    useState<(typeof sections)[number]>("Bills");
   const [locations, setLocations] = useState<LocationResult[]>([]);
   const [lookupStatus, setLookupStatus] = useState<
     "idle" | "loading" | "empty" | "error"
@@ -78,14 +80,13 @@ export function BillsDashboard() {
   const [chatDraft, setChatDraft] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
   const chatMutation = api.chat.send.useMutation();
-  const currentSection = sections[sectionIndex] ?? sections[0];
-  const previousSection =
-    sections[(sectionIndex - 1 + sections.length) % sections.length] ??
-    sections[0];
-  const nextSection =
-    sections[(sectionIndex + 1) % sections.length] ?? sections[0];
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("auth") === "error") {
+      setAuthError(
+        "That email link has expired or could not be verified. Sign in or request another password reset link.",
+      );
+    }
     try {
       const saved = window.localStorage.getItem("ledgerline-guest-onboarding");
       if (saved) {
@@ -113,14 +114,80 @@ export function BillsDashboard() {
 
   useEffect(() => {
     if (!supabase) return;
-    void supabase.auth.getUser().then(({ data }) => {
-      setSignedInEmail(data.user?.email ?? null);
-    });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const userId = session?.user.id ?? null;
+      activeUserRef.current = userId;
+      setSignedInId(userId);
       setSignedInEmail(session?.user.email ?? null);
+      if (_event === "SIGNED_OUT") {
+        const empty = {
+          location: "",
+          locationId: null,
+          age: "",
+          gender: "",
+          interests: [],
+        };
+        setProfile(empty);
+        setDraft(empty);
+        setProfileError(null);
+        setProfileLoading(false);
+        setChatMessages([]);
+        setChatError(null);
+      }
     });
     return () => data.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!signedInId) return;
+    let cancelled = false;
+    setProfileLoading(true);
+    setProfileError(null);
+    void utils.profile.me
+      .fetch(undefined, { staleTime: 0 })
+      .then(async (stored) => {
+        if (cancelled || activeUserRef.current !== signedInId) return;
+        if (stored && stored.id !== signedInId)
+          throw new Error("Account changed. Please reload your preferences.");
+        const pendingKey = `ledgerline-signup-profile:${signedInId}`;
+        const pending = window.localStorage.getItem(pendingKey);
+        if (pending) {
+          const parsed = profileInputSchema.safeParse(JSON.parse(pending));
+          const isEmpty =
+            !stored ||
+            (!stored.tags.length &&
+              stored.age === null &&
+              !stored.location &&
+              !stored.gender);
+          if (parsed.success && isEmpty) {
+            stored = await utils.client.profile.save.mutate(parsed.data);
+          }
+          window.localStorage.removeItem(pendingKey);
+          if (cancelled || activeUserRef.current !== signedInId) return;
+        }
+        const restored: Profile = {
+          location: stored?.location ?? "",
+          locationId: stored?.location_id ?? null,
+          age: stored?.age?.toString() ?? "",
+          gender: stored?.gender ?? "",
+          interests: stored?.tags ?? [],
+        };
+        setProfile(restored);
+        setDraft(restored);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setProfileError(
+            "Your account preferences could not be loaded. Reload the page to try again.",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [signedInId, utils]);
 
   useEffect(() => {
     const query = draft.location.trim();
@@ -208,19 +275,44 @@ export function BillsDashboard() {
     dialogRef.current?.showModal();
   }
 
-  function saveProfile(event: FormEvent<HTMLFormElement>) {
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saveProfileMutation.isPending || profileLoading) return;
     if (draft.location.trim() && draft.locationId === null) {
       setLookupStatus("empty");
       locationInputRef.current?.focus();
       return;
     }
-    setProfile(draft);
-    window.localStorage.setItem(
-      "ledgerline-guest-onboarding",
-      JSON.stringify({ profile: draft }),
-    );
-    dialogRef.current?.close();
+    setProfileError(null);
+    const result = profileInputSchema.safeParse({
+      tags: draft.interests,
+      age: draft.age ? Number(draft.age) : null,
+      location: draft.location || null,
+      locationId: draft.locationId === null ? null : String(draft.locationId),
+      gender: draft.gender || null,
+    });
+    if (!result.success) {
+      setProfileError(
+        "Check your preferences. Age must be a whole number from 1 to 120.",
+      );
+      return;
+    }
+    const userId = activeUserRef.current;
+    try {
+      if (userId) {
+        await saveProfileMutation.mutateAsync(result.data);
+        if (activeUserRef.current !== userId) return;
+      } else {
+        window.localStorage.setItem(
+          "ledgerline-guest-onboarding",
+          JSON.stringify({ profile: draft }),
+        );
+      }
+      setProfile(draft);
+      dialogRef.current?.close();
+    } catch {
+      setProfileError("Your preferences could not be saved. Please try again.");
+    }
   }
 
   function skipOnboarding() {
@@ -324,75 +416,39 @@ export function BillsDashboard() {
           onClick={() => signupDialogRef.current?.showModal()}
           className="font-mono-ui border-surface-cream/50 hover:bg-surface-cream hover:text-primary cursor-pointer rounded-full border px-4 py-2 text-[11px] tracking-[0.12em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         >
-          {signedInEmail ? "Account" : "Sign up"}
+          {signedInEmail ? "Account" : "Sign in"}
         </button>
       </header>
 
       <div className="mx-auto grid w-full max-w-[1440px] flex-1 gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_350px] lg:px-12">
         <main className="min-w-0">
+          {authError && (
+            <p
+              role="alert"
+              className="border-primary/25 bg-surface-tan mb-4 rounded-lg border p-3 text-sm"
+            >
+              {authError}
+            </p>
+          )}
+          {profileError && (
+            <p
+              role="alert"
+              className="border-primary/25 bg-surface-tan mb-4 rounded-lg border p-3 text-sm"
+            >
+              {profileError}
+            </p>
+          )}
+          {profileLoading && (
+            <p role="status" className="mb-4 text-sm">
+              Loading your preferences…
+            </p>
+          )}
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
                 Your legislative feed
               </p>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="flex w-9 flex-col" aria-label="Switch views">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSectionIndex(
-                        (current) =>
-                          (current - 1 + sections.length) % sections.length,
-                      )
-                    }
-                    aria-label={`Switch to ${previousSection}`}
-                    title={`Switch to ${previousSection}`}
-                    className="text-primary hover:bg-surface-tan flex h-5 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
-                  >
-                    <svg
-                      width="18"
-                      height="12"
-                      viewBox="0 0 18 12"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="m3 9 6-6 6 6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSectionIndex(
-                        (current) => (current + 1) % sections.length,
-                      )
-                    }
-                    aria-label={`Switch to ${nextSection}`}
-                    title={`Switch to ${nextSection}`}
-                    className="text-primary hover:bg-surface-tan flex h-5 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
-                  >
-                    <svg
-                      width="18"
-                      height="12"
-                      viewBox="0 0 18 12"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="m3 3 6 6 6-6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
+              <div className="relative mt-3 inline-flex items-center gap-3 rounded-lg focus-within:outline-2 focus-within:outline-offset-4">
                 <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
                   <span
                     key={currentSection}
@@ -401,11 +457,41 @@ export function BillsDashboard() {
                     {currentSection} for you
                   </span>
                 </h1>
+                <svg
+                  width="20"
+                  height="14"
+                  viewBox="0 0 20 14"
+                  fill="none"
+                  aria-hidden="true"
+                  className="shrink-0"
+                >
+                  <path
+                    d="m4 4 6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <select
+                  aria-label="Choose feed type"
+                  value={currentSection}
+                  onChange={(event) =>
+                    setCurrentSection(
+                      event.target.value === "Amendments"
+                        ? "Amendments"
+                        : "Bills",
+                    )
+                  }
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                >
+                  {sections.map((section) => (
+                    <option key={section} value={section}>
+                      {section}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <p className="font-mono-ui text-primary/60 mt-2 pl-12 text-[11px] tracking-[0.08em]">
-                {sectionIndex + 1} / {sections.length} · Use the arrows to
-                switch views
-              </p>
             </div>
             <button
               type="button"
@@ -630,9 +716,11 @@ export function BillsDashboard() {
             Make this feed yours.
           </h2>
           <p className="text-primary/70 mt-3 text-sm leading-6">
-            Choose what matters to you. Browsing is free and does not require an
-            account. Your choices are saved on this device. Bill recommendations
-            are not connected yet.
+            Choose what matters to you.{" "}
+            {signedInId
+              ? "Your choices are saved to your account."
+              : "Your choices are saved on this device. Sign in to save them to your account."}{" "}
+            Bill recommendations are not connected yet.
           </p>
           <div className="mt-7 grid gap-5">
             <fieldset>
@@ -812,6 +900,11 @@ export function BillsDashboard() {
               </select>
             </label>
           </div>
+          {profileError && (
+            <p role="alert" className="mt-4 text-sm">
+              {profileError}
+            </p>
+          )}
           <div className="mt-8 flex items-center justify-end gap-3">
             <button
               type="button"
@@ -822,14 +915,40 @@ export function BillsDashboard() {
             </button>
             <button
               type="submit"
+              disabled={saveProfileMutation.isPending || profileLoading}
               className="bg-primary text-surface-cream font-mono-ui cursor-pointer rounded-full px-6 py-3 text-[11px] tracking-[0.08em] uppercase"
             >
-              Save preferences
+              {saveProfileMutation.isPending ? "Saving…" : "Save preferences"}
             </button>
           </div>
         </form>
       </dialog>
-      <SignupDialog dialogRef={signupDialogRef} signedInEmail={signedInEmail} />
+      <SignupDialog
+        dialogRef={signupDialogRef}
+        signedInEmail={signedInEmail}
+        onAccountCreated={(userId) => {
+          const parsed = profileInputSchema.safeParse({
+            tags: profile.interests,
+            age: profile.age ? Number(profile.age) : null,
+            location: profile.location || null,
+            locationId:
+              profile.locationId === null ? null : String(profile.locationId),
+            gender: profile.gender || null,
+          });
+          if (parsed.success) {
+            try {
+              window.localStorage.setItem(
+                `ledgerline-signup-profile:${userId}`,
+                JSON.stringify(parsed.data),
+              );
+            } catch {
+              setProfileError(
+                "Your account was created. Save your preferences again after signing in.",
+              );
+            }
+          }
+        }}
+      />
     </div>
   );
 }
