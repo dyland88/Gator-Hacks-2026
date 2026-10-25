@@ -7,11 +7,21 @@ vi.mock("~/lib/supabase-server", () => ({
 }));
 vi.mock("~/server/ordinances/ingestion", () => ({
   submitCityIngestion: vi.fn(),
+  reconcileIngestion: vi.fn(),
+  activeStatuses: [
+    "submitting",
+    "processing",
+    "submission_unknown",
+    "reconciliation_failed",
+  ],
 }));
 
 import { ordinancesRouter } from "./ordinances";
 import { type createTRPCContext } from "../trpc";
-import { submitCityIngestion } from "~/server/ordinances/ingestion";
+import {
+  reconcileIngestion,
+  submitCityIngestion,
+} from "~/server/ordinances/ingestion";
 
 const cityId = "ccf48957-3c42-462b-9ecf-95ad836e5da1";
 const userId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
@@ -44,9 +54,13 @@ function setup(
     },
     ordinance: {
       findMany: vi.fn().mockResolvedValue([{ id: cursor }, { id: userId }]),
+      count: vi.fn().mockResolvedValue(2),
     },
     ordinanceChange: {
       findMany: vi.fn().mockResolvedValue([{ id: cursor }, { id: userId }]),
+    },
+    ingestionRun: {
+      findMany: vi.fn().mockResolvedValue([]),
     },
   };
   const ctx = {
@@ -195,7 +209,9 @@ describe("public legislative feed", () => {
     const { caller, db, chain } = setup(false);
     expect(await caller.locations()).toHaveLength(1);
     expect(db.municipality.findMany).toHaveBeenCalledWith({
-      where: { ordinances: { some: {} } },
+      where: {
+        OR: [{ ordinances: { some: {} } }, { key: { in: [] } }],
+      },
       select: { id: true, key: true, city: true, state: true, label: true },
       orderBy: [{ city: "asc" }, { state: "asc" }],
     });
@@ -322,7 +338,9 @@ describe("personalized feed ordering", () => {
 
   function feedCaller(findMany: ReturnType<typeof vi.fn>) {
     const ctx = {
-      db: { ordinance: { findMany } },
+      db: {
+        ordinance: { findMany, count: vi.fn().mockResolvedValue(rows.length) },
+      },
       headers: new Headers(),
       user: null,
       supabase: null,
@@ -379,6 +397,188 @@ describe("personalized feed ordering", () => {
         lifeCircumstances: ["Renter"],
         cursor: "44444444-4444-4444-8444-444444444444",
       }),
-    ).resolves.toEqual({ items: [], nextCursor: undefined });
+    ).resolves.toEqual({
+      items: [],
+      total: rows.length,
+      nextCursor: undefined,
+    });
+  });
+});
+
+describe("city research requests", () => {
+  const runId = "33b34dd6-c790-4f01-950d-e05892d113e5";
+  const activeRunId = "a1f0c3c2-7d1e-4f63-9d5b-2f0c1b7e8a10";
+
+  function researchCaller(
+    runs: { id: string; status: string; cities: { key: string }[] }[] = [],
+    user = true,
+  ) {
+    const db = {
+      ingestionRun: {
+        findMany: vi.fn().mockResolvedValue(runs),
+        findUnique: vi.fn().mockResolvedValue({
+          status: "failed",
+          failureCode: "credit_limit_reached",
+        }),
+      },
+      municipality: {
+        findUnique: vi.fn().mockResolvedValue({ id: cityId }),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    };
+    const ctx = {
+      db,
+      headers: new Headers(),
+      user: user ? { id: userId, app_metadata: { role: "member" } } : null,
+      supabase: {},
+    };
+    return {
+      db,
+      caller: ordinancesRouter.createCaller(
+        ctx as unknown as Awaited<ReturnType<typeof createTRPCContext>>,
+      ),
+    };
+  }
+
+  const gainesville = { city: "Gainesville", state: "Florida" };
+
+  it("rejects anonymous research requests before starting a run", async () => {
+    const { caller } = researchCaller([], false);
+    await expect(caller.requestCity(gainesville)).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+      message: "Sign in to access this feature (to prevent spam).",
+    });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-U.S. cities without spending credits", async () => {
+    const { caller } = researchCaller();
+    await expect(
+      caller.requestCity({ city: "Paris", state: "Île-de-France" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
+  });
+
+  it("starts a 90-day run for a city that is not in the database", async () => {
+    const { caller } = researchCaller();
+    vi.mocked(submitCityIngestion).mockResolvedValueOnce({
+      runId,
+      status: "processing",
+      providerJobId: "job",
+    });
+    expect(await caller.requestCity(gainesville)).toEqual({
+      status: "started",
+      runId,
+    });
+    expect(vi.mocked(submitCityIngestion).mock.calls[0]![0]).toMatchObject({
+      city: { key: "us:fl:gainesville" },
+      lookbackDays: 90,
+    });
+  });
+
+  it("joins an active run for the same city instead of paying again", async () => {
+    const { caller } = researchCaller([
+      {
+        id: activeRunId,
+        status: "processing",
+        cities: [{ key: "us:fl:gainesville" }],
+      },
+    ]);
+    expect(await caller.requestCity(gainesville)).toEqual({
+      status: "started",
+      runId: activeRunId,
+    });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
+  });
+
+  it("does not re-run a city that was already researched, even with zero ordinances", async () => {
+    const { caller } = researchCaller([
+      {
+        id: activeRunId,
+        status: "completed",
+        cities: [{ key: "us:fl:gainesville" }],
+      },
+    ]);
+    expect(await caller.requestCity(gainesville)).toEqual({
+      status: "exists",
+      municipalityId: cityId,
+    });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
+  });
+
+  it("hides configuration and provider details behind a service message", async () => {
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const { caller } = researchCaller();
+    vi.mocked(submitCityIngestion).mockRejectedValueOnce(
+      new Error("FIRECRAWL_API_KEY secret detail"),
+    );
+    await expect(caller.requestCity(gainesville)).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "This service is temporarily unavailable.",
+    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[ordinance-ingestion] city research request failed",
+      expect.any(Error),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it("reports a credit-limited run status with its failure code", async () => {
+    const { caller } = researchCaller();
+    expect(await caller.cityResearchStatus({ runId })).toEqual({
+      status: "failed",
+      failureCode: "credit_limit_reached",
+    });
+  });
+
+  it("rejects unknown and malformed research run ids", async () => {
+    const { caller, db } = researchCaller();
+    db.ingestionRun.findUnique.mockResolvedValueOnce(null);
+    await expect(caller.cityResearchStatus({ runId })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(
+      caller.cityResearchStatus({ runId: "not-a-run" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("lists researched cities with zero ordinances so users can see their empty feed", async () => {
+    const { caller, db } = researchCaller([
+      {
+        id: activeRunId,
+        status: "partial",
+        cities: [{ key: "us:fl:gainesville" }],
+      },
+    ]);
+    await caller.locations();
+    expect(db.municipality.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { ordinances: { some: {} } },
+            { key: { in: ["us:fl:gainesville"] } },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("runs a manual status check only outside production", async () => {
+    const { caller, db } = researchCaller();
+    vi.mocked(reconcileIngestion).mockResolvedValueOnce([]);
+    try {
+      vi.stubEnv("NODE_ENV", "production");
+      await expect(caller.checkResearchNow()).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+      expect(reconcileIngestion).not.toHaveBeenCalled();
+      vi.stubEnv("NODE_ENV", "development");
+      expect(await caller.checkResearchNow()).toEqual([]);
+      expect(reconcileIngestion).toHaveBeenCalledWith(db);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

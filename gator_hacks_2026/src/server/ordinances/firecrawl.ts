@@ -11,7 +11,10 @@ import { buildAgentJsonSchema } from "./schema";
 export class FirecrawlError extends Error {
   constructor(
     public readonly code:
-      "provider_rejected" | "submission_unknown" | "provider_unavailable",
+      | "provider_rejected"
+      | "submission_unknown"
+      | "provider_unavailable"
+      | "credit_limit_reached",
   ) {
     super(code);
   }
@@ -44,12 +47,11 @@ async function request(path: string, body?: unknown): Promise<unknown> {
     );
   }
   if (!response.ok) {
+    if (!body) throw new FirecrawlError("provider_unavailable");
+    if (response.status === 402)
+      throw new FirecrawlError("credit_limit_reached");
     throw new FirecrawlError(
-      body
-        ? response.status >= 500
-          ? "submission_unknown"
-          : "provider_rejected"
-        : "provider_unavailable",
+      response.status >= 500 ? "submission_unknown" : "provider_rejected",
     );
   }
   try {

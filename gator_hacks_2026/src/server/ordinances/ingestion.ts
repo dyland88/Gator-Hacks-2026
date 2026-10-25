@@ -44,12 +44,22 @@ const snapshotSchema = z.array(
     label: z.string(),
   }),
 );
-const activeStatuses = [
+export const activeStatuses = [
   "submitting",
   "processing",
   "submission_unknown",
   "reconciliation_failed",
 ];
+
+export function logIngestionFailure(
+  runId: string,
+  failureCode: string,
+  providerJobId?: string,
+) {
+  console.error(
+    `[ordinance-ingestion] run=${runId} job=${providerJobId ?? "none"} failed: ${failureCode}`,
+  );
+}
 
 export function reportingWindow(now = new Date()) {
   const end = new Date(now);
@@ -194,16 +204,22 @@ async function submitRun(
       data: { providerJobId: jobId, status: "processing" },
     });
   } catch (error) {
-    const rejected =
-      error instanceof FirecrawlError && error.code === "provider_rejected";
+    const failureCode =
+      error instanceof FirecrawlError &&
+      (error.code === "provider_rejected" ||
+        error.code === "credit_limit_reached")
+        ? error.code
+        : "submission_unknown";
+    const definite = failureCode !== "submission_unknown";
     await database.ingestionRun.updateMany({
       where: { id: run.id, status: "submitting" },
       data: {
-        status: rejected ? "failed" : "submission_unknown",
-        failureCode: rejected ? "provider_rejected" : "submission_unknown",
-        completedAt: rejected ? new Date() : null,
+        status: definite ? "failed" : "submission_unknown",
+        failureCode,
+        completedAt: definite ? new Date() : null,
       },
     });
+    if (definite) logIngestionFailure(run.id, failureCode);
   }
   const updated = await database.ingestionRun.findUniqueOrThrow({
     where: { id: run.id },
@@ -362,17 +378,15 @@ export async function completeIngestion(
         creditsUsed: input.creditsUsed,
       };
       if (input.status !== "completed") {
+        const failureCode =
+          input.status === "credit_limit_reached"
+            ? "credit_limit_reached"
+            : "provider_failed";
         await tx.ingestionRun.update({
           where: { id: run.id },
-          data: {
-            ...common,
-            status: "failed",
-            failureCode:
-              input.status === "credit_limit_reached"
-                ? "credit_limit_reached"
-                : "provider_failed",
-          },
+          data: { ...common, status: "failed", failureCode },
         });
+        logIngestionFailure(run.id, failureCode, input.jobId);
         return "failed";
       }
       const parsed = resultSchema.safeParse(input.data);
@@ -381,6 +395,7 @@ export async function completeIngestion(
           where: { id: run.id },
           data: { ...common, status: "failed", failureCode: "invalid_result" },
         });
+        logIngestionFailure(run.id, "invalid_result", input.jobId);
         return "failed";
       }
       const cities = snapshotSchema.parse(run.cities);

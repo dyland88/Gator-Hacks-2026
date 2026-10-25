@@ -11,6 +11,11 @@ import {
   interestOptions,
   profileInputSchema,
 } from "~/lib/profile";
+import {
+  locationLabel,
+  searchUsPlaces,
+  type LocationResult,
+} from "~/lib/location-search";
 import { supabase } from "~/lib/supabase-client";
 import { api } from "~/trpc/react";
 
@@ -22,14 +27,6 @@ type Profile = {
   lifeCircumstances: string[];
 };
 
-type LocationResult = {
-  id: number | string;
-  name: string;
-  admin1?: string;
-  country?: string;
-  postcode?: string;
-};
-
 type ChatMessage = {
   id: string;
   role: "user" | "model";
@@ -37,13 +34,6 @@ type ChatMessage = {
 };
 
 type ChatPayloadMessage = Pick<ChatMessage, "role" | "content">;
-
-function locationLabel(place: LocationResult) {
-  const placeName = [place.name, place.admin1, place.country]
-    .filter(Boolean)
-    .join(", ");
-  return place.postcode ? `${place.postcode} — ${placeName}` : placeName;
-}
 
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -235,45 +225,7 @@ export function BillsDashboard() {
     async function searchLocations() {
       setLookupStatus("loading");
       try {
-        let results: LocationResult[];
-        if (/^\d{5}$/.test(query)) {
-          const response = await fetch(
-            `https://api.zippopotam.us/us/${query}`,
-            { signal: controller.signal },
-          );
-          if (response.status === 404) {
-            results = [];
-          } else {
-            if (!response.ok) throw new Error("ZIP lookup failed");
-            const data = (await response.json()) as {
-              country: string;
-              places: { "place name": string; state: string }[];
-            };
-            results = data.places.map((place, index) => ({
-              id: `us:${query}:${index}`,
-              name: place["place name"],
-              admin1: place.state,
-              country: data.country,
-              postcode: query,
-            }));
-          }
-        } else {
-          const params = new URLSearchParams({
-            name: query,
-            count: "6",
-            language: "en",
-            format: "json",
-          });
-          const response = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?${params}`,
-            { signal: controller.signal },
-          );
-          if (!response.ok) throw new Error("Location lookup failed");
-          const data = (await response.json()) as {
-            results?: LocationResult[];
-          };
-          results = data.results ?? [];
-        }
+        const results = await searchUsPlaces(query, controller.signal);
         setLocations(results);
         setLookupStatus(results.length ? "idle" : "empty");
       } catch {
@@ -373,7 +325,7 @@ export function BillsDashboard() {
         onError(error) {
           setChatError(
             error.message ||
-            "Legal Seagull could not answer right now. Please try again.",
+              "Legal Seagull could not answer right now. Please try again.",
           );
         },
       },
@@ -715,8 +667,8 @@ export function BillsDashboard() {
                           ...current,
                           interests: current.interests.includes(interest)
                             ? current.interests.filter(
-                              (item) => item !== interest,
-                            )
+                                (item) => item !== interest,
+                              )
                             : [...current.interests, interest],
                         }))
                       }
@@ -861,8 +813,8 @@ export function BillsDashboard() {
               id="circumstances-help"
               className="text-primary/70 mt-2 text-[14px] leading-5"
             >
-              This information is used to improve the relevance
-              of the legislation presented to you. This will not exclude results from
+              This information is used to improve the relevance of the
+              legislation presented to you. This will not exclude results from
               your feed.
             </p>
             {lifeCircumstanceQuery.isError ? (

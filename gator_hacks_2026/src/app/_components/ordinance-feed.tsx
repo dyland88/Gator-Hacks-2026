@@ -10,6 +10,11 @@ import {
 } from "~/lib/ordinance-display";
 import { interestDescriptions, interestOptions } from "~/lib/profile";
 import { api } from "~/trpc/react";
+import {
+  CityResearchButton,
+  CityResearchStatus,
+  useResearchRun,
+} from "~/app/_components/city-research";
 import { type RouterOutputs } from "~/trpc/react";
 
 type Topic = (typeof interestOptions)[number];
@@ -169,6 +174,7 @@ export function OrdinanceFeed({
 }) {
   const [chosenLocation, setChosenLocation] = useState<string | null>(null);
   const [chosenTopics, setChosenTopics] = useState<Topic[] | null>(null);
+  const [researchRun, setResearchRun] = useResearchRun();
   const locations = api.ordinances.locations.useQuery(undefined, {
     staleTime: 60_000,
   });
@@ -177,8 +183,8 @@ export function OrdinanceFeed({
     chosenLocation ??
     (profileLocation.trim()
       ? (locations.data?.find(
-        (location) => location.key === profileIdentity?.key,
-      )?.id ?? "")
+          (location) => location.key === profileIdentity?.key,
+        )?.id ?? "")
       : (locations.data?.[0]?.id ?? ""));
   const topics =
     chosenTopics ??
@@ -199,14 +205,15 @@ export function OrdinanceFeed({
     },
   );
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
+  const total = feed.data?.pages[0]?.total ?? 0;
 
   function toggleTopic(topic: Topic) {
     setChosenTopics(
       topics.includes(topic)
         ? topics.filter((value) => value !== topic)
         : interestOptions.filter(
-          (value) => value === topic || topics.includes(value),
-        ),
+            (value) => value === topic || topics.includes(value),
+          ),
     );
   }
 
@@ -214,40 +221,45 @@ export function OrdinanceFeed({
     <section aria-label={`${section} results`}>
       <div className="border-primary/20 bg-surface-tan/35 mb-6 rounded-[18px] border p-4 sm:p-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0 flex-1 sm:max-w-[360px]">
-            <label
-              htmlFor="feed-location"
-              className="text-primary/70 mb-2 block text-[14px] tracking-[0.12em] uppercase"
-            >
-              Location
-            </label>
-            <select
-              id="feed-location"
-              value={municipalityId}
-              disabled={
-                locations.isPending ||
-                locations.isError ||
-                !locations.data?.length
-              }
-              onChange={(event) => setChosenLocation(event.target.value)}
-              className="border-primary/25 bg-surface-cream text-primary w-full cursor-pointer rounded-lg border px-3 py-2.5 text-[14px] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-default disabled:opacity-60"
-            >
-              <option value="">
-                {locations.isPending
-                  ? "Loading locations…"
-                  : "Choose a location"}
-              </option>
-              {locations.data?.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.city}, {location.state}, United States
+          <div className="flex min-w-0 flex-1 items-end gap-3 sm:max-w-[560px]">
+            <div className="min-w-0 flex-1 sm:max-w-[360px]">
+              <label
+                htmlFor="feed-location"
+                className="text-primary/70 mb-2 block text-[14px] tracking-[0.12em] uppercase"
+              >
+                Location
+              </label>
+              <select
+                id="feed-location"
+                value={municipalityId}
+                disabled={
+                  locations.isPending ||
+                  locations.isError ||
+                  !locations.data?.length
+                }
+                onChange={(event) => setChosenLocation(event.target.value)}
+                className="border-primary/25 bg-surface-cream text-primary w-full cursor-pointer rounded-lg border px-3 py-2.5 text-[14px] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-default disabled:opacity-60"
+              >
+                <option value="">
+                  {locations.isPending
+                    ? "Loading locations…"
+                    : "Choose a location"}
                 </option>
-              ))}
-            </select>
+                {locations.data?.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.city}, {location.state}, United States
+                  </option>
+                ))}
+              </select>
+            </div>
+            <CityResearchButton
+              onStarted={setResearchRun}
+              onSelectMunicipality={setChosenLocation}
+            />
           </div>
           {municipalityId && !feed.isPending && !feed.isError && (
             <p role="status" className="text-primary/65 pb-2 text-[14px]">
-              {items.length} {items.length === 1 ? "ordinance" : "ordinances"}{" "}
-              shown
+              {total} {total === 1 ? "ordinance" : "ordinances"} found
             </p>
           )}
         </div>
@@ -287,6 +299,12 @@ export function OrdinanceFeed({
         </div>
       </div>
 
+      {researchRun && (
+        <CityResearchStatus
+          run={researchRun}
+          onDismiss={() => setResearchRun(null)}
+        />
+      )}
       {locations.isError ? (
         <FeedMessage
           title="Locations could not be loaded."
@@ -329,12 +347,14 @@ export function OrdinanceFeed({
           title={
             section === "Amendments"
               ? "No matching amendments yet."
-              : "No ordinances match these topics."
+              : topics.length
+                ? "No ordinances match these topics."
+                : "No recent ordinances found yet."
           }
           description={
             topics.length
               ? "Try showing all topics or selecting another city."
-              : "There are no stored updates in this view for the selected city yet."
+              : "This city has been researched, but no ordinances have been saved for it yet."
           }
         />
       ) : (

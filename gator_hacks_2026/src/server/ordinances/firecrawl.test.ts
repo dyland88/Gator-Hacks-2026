@@ -149,11 +149,29 @@ describe("Firecrawl Agent transport", () => {
     });
     expect(fetch.mock.calls[0]![1]?.method).toBe("GET");
   });
-  it("sanitizes rejection details and does not retry", async () => {
+  it("reports exhausted Firecrawl credits as credit_limit_reached without retrying", async () => {
     const fetch = vi
       .fn()
       .mockResolvedValue(
         new Response("secret provider detail", { status: 402 }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      startAgent({
+        runId: jobId,
+        cities: [],
+        windowStart: new Date(),
+        windowEnd: new Date(),
+        lifeCircumstances: circumstances,
+      }),
+    ).rejects.toThrow("credit_limit_reached");
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+  it("sanitizes rejection details and does not retry", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response("secret provider detail", { status: 400 }),
       );
     vi.stubGlobal("fetch", fetch);
     await expect(
