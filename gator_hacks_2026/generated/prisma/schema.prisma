@@ -20,3 +20,16 @@ model Post {
 
   @@index([name])
 }
+
+model UserProfile {
+  id         String   @id @db.Uuid
+  tags       String[] @default([])
+  age        Int?
+  location   String?
+  locationId String?  @map("location_id")
+  gender     String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_profiles")
+}

@@ -71,7 +71,19 @@ GEMMA_MODEL="gemma-4-26b-a4b-it"
 
 `GEMMA_MODEL` is optional at runtime and defaults to `gemma-4-26b-a4b-it`. `GEMINI_API_KEY` is server-only and must never use a `NEXT_PUBLIC_` prefix.
 
-## Verification
+## Supabase authentication and profiles
+
+- Supabase Auth stores credentials in `auth.users`; `public.user_profiles` stores each user's tags, optional age, location, location ID, and gender.
+- Use the cookie-based browser client in `src/lib/supabase-client.ts` and the server client in `src/lib/supabase-server.ts`.
+- `src/middleware.ts` refreshes sessions for Next.js 15. Keep this filename until the app upgrades to Next.js 16.
+- `protectedProcedure` verifies the Supabase user server-side. The `profile.me` and `profile.save` procedures derive ownership from that verified user and query through their Supabase session so RLS remains active.
+- Never accept a user ID from the client as the owner of a profile operation. Keep demographic data out of request logs and AI calls.
+- Profile SQL is versioned in `prisma/sql/user-profiles.sql`. Run `pnpm db:profiles` for the auth foreign key, policies, checks, and triggers; Prisma schema synchronization alone does not provision these objects.
+- Run `prisma/sql/user-profiles.verify.sql` with `prisma db execute` to check the signup trigger, owner updates, denied cross-user access, and denied anonymous access. Verification rolls back its test accounts.
+- Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` locally and in Vercel. The legacy anon key is supported. Database passwords and secret keys must remain server-only.
+- Redirect URLs for `/auth/callback` and `/auth/callback?next=/auth/reset-password` must be allowed in the Supabase dashboard. See the app README for setup.
+
+## Verification commands
 
 Run these from `gator_hacks_2026/` after changing the chat or AI provider:
 

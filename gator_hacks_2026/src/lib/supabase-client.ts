@@ -1,8 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { getSupabaseConfig } from "~/lib/supabase-config";
+import { type Database } from "~/lib/profile";
 
-export const supabase = url && key ? createClient(url, key) : null;
+const config = getSupabaseConfig();
+
+export const supabase = config
+  ? createBrowserClient<Database>(config.url, config.key)
+  : null;
