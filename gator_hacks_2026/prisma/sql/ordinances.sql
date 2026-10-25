@@ -75,4 +75,30 @@ ALTER TABLE public.ordinance_changes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.municipalities, public.ingestion_runs, public.ordinances, public.ordinance_changes FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.municipalities, public.ingestion_runs, public.ordinances, public.ordinance_changes TO service_role;
 
+CREATE TABLE IF NOT EXISTS public.life_circumstances (
+  key text PRIMARY KEY,
+  label text NOT NULL,
+  description text NOT NULL,
+  "sortOrder" integer NOT NULL DEFAULT 0,
+  active boolean NOT NULL DEFAULT true
+);
+
+INSERT INTO public.life_circumstances (key, label, description, "sortOrder") VALUES
+  ('Student', 'Student', 'Enrolled in or directly affected as a student at a school, college, university, or training program, including student-specific housing, fees, or rules.', 0),
+  ('Renter', 'Renter', 'Rents a home or unit, including tenant protections, rent rules, and landlord obligations.', 1),
+  ('Homeowner', 'Homeowner', 'Owns a home or residential property, including property taxes, exemptions, and homeowner obligations.', 2),
+  ('Parent or guardian', 'Parent or guardian', 'Responsible for a child or dependent, including childcare, school-related, and family-support rules.', 3),
+  ('Caregiver', 'Caregiver', 'Provides care for a family member or other person who needs help, paid or unpaid.', 4),
+  ('Employed', 'Employed', 'Works for an employer or is directly affected as a worker, including labor, wage, and workplace rules.', 5),
+  ('Job seeker', 'Job seeker', 'Looking for work, including workforce programs, job training, and hiring-related rules.', 6),
+  ('Small-business owner', 'Small-business owner', 'Owns or operates a business, including licensing, permits, and business taxes or rules.', 7),
+  ('Retired', 'Retired', 'Retired from work, including senior-specific programs, benefits, and rules for older residents.', 8),
+  ('Veteran', 'Veteran', 'Served in the military, including veteran-specific benefits, preferences, or programs.', 9),
+  ('Person with a disability', 'Person with a disability', 'Has a disability, including accessibility, accommodation, and disability-specific benefit rules.', 10)
+ON CONFLICT (key) DO NOTHING;
+
+ALTER TABLE public.life_circumstances ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.life_circumstances FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.life_circumstances TO service_role;
+
 COMMIT;

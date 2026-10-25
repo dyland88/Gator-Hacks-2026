@@ -5,9 +5,13 @@ vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/lib/supabase-server", () => ({
   createServerSupabaseClient: vi.fn(),
 }));
+vi.mock("~/server/ordinances/ingestion", () => ({
+  submitCityIngestion: vi.fn(),
+}));
 
 import { ordinancesRouter } from "./ordinances";
 import { type createTRPCContext } from "../trpc";
+import { submitCityIngestion } from "~/server/ordinances/ingestion";
 
 const cityId = "ccf48957-3c42-462b-9ecf-95ad836e5da1";
 const userId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
@@ -213,5 +217,168 @@ describe("public legislative feed", () => {
       caller.feed({ municipalityId: cityId, userId } as never),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(db.ordinance.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("DBA city ingestion authorization", () => {
+  function dbaCaller(role: string | undefined) {
+    const db = {};
+    const ctx = {
+      db,
+      headers: new Headers(),
+      user: { id: userId, app_metadata: { role } },
+      supabase: {},
+    };
+    return ordinancesRouter.createCaller(
+      ctx as unknown as Awaited<ReturnType<typeof createTRPCContext>>,
+    );
+  }
+
+  it("rejects callers without the dba role before submitting an Agent run", async () => {
+    await expect(
+      dbaCaller("member").startCityIngestion({ city: "Austin", state: "TX" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      dbaCaller(undefined).startCityIngestion({ city: "Austin", state: "TX" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
+  });
+
+  it("normalizes a valid city and submits with the bounded lookback", async () => {
+    vi.mocked(submitCityIngestion).mockResolvedValueOnce({
+      runId: cursor,
+      status: "processing",
+      providerJobId: userId,
+    });
+    const response = await dbaCaller("dba").startCityIngestion({
+      city: " Austin ",
+      state: "tx",
+      lookbackDays: 90,
+    });
+    expect(response).toEqual({
+      runId: cursor,
+      status: "processing",
+      providerJobId: userId,
+    });
+    expect(submitCityIngestion).toHaveBeenCalledWith(
+      {
+        city: {
+          key: "us:tx:austin",
+          city: "Austin",
+          state: "TX",
+          label: "Austin, TX, United States",
+        },
+        lookbackDays: 90,
+      },
+      expect.any(Date),
+      expect.anything(),
+    );
+  });
+
+  it("rejects malformed locations and out-of-range lookbacks without spending credits", async () => {
+    const caller = dbaCaller("dba");
+    await expect(
+      caller.startCityIngestion({ city: "Austin, Texas", state: "TX" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller.startCityIngestion({ city: "Austin", state: "Atlantis" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller.startCityIngestion({
+        city: "Austin",
+        state: "TX",
+        lookbackDays: 366,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
+  });
+});
+
+describe("personalized feed ordering", () => {
+  const renterRule = {
+    ageMin: null,
+    ageMax: null,
+    lifeCircumstances: ["Renter"],
+    evidenceExcerpt: "Protects renters.",
+  };
+  const studentRule = { ...renterRule, lifeCircumstances: ["Student"] };
+  const rows = [
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      latestActivity: "2026-10-24",
+      relevanceRules: [],
+    },
+    {
+      id: "22222222-2222-4222-8222-222222222222",
+      latestActivity: "2026-10-20",
+      relevanceRules: [renterRule],
+    },
+    {
+      id: "33333333-3333-4333-8333-333333333333",
+      latestActivity: "2026-10-23",
+      relevanceRules: [studentRule],
+    },
+  ];
+
+  function feedCaller(findMany: ReturnType<typeof vi.fn>) {
+    const ctx = {
+      db: { ordinance: { findMany } },
+      headers: new Headers(),
+      user: null,
+      supabase: null,
+    };
+    return ordinancesRouter.createCaller(
+      ctx as unknown as Awaited<ReturnType<typeof createTRPCContext>>,
+    );
+  }
+
+  it("moves bills that explicitly affect the saved circumstances to the top across pages", async () => {
+    const caller = feedCaller(vi.fn().mockResolvedValue(rows));
+    const first = await caller.feed({
+      municipalityId: cityId,
+      lifeCircumstances: ["Renter"],
+      limit: 2,
+    });
+    expect(first.items.map((item) => item.id)).toEqual([
+      rows[1]!.id,
+      rows[0]!.id,
+    ]);
+    expect(first.nextCursor).toBe(rows[0]!.id);
+    expect(first.items[0]).not.toHaveProperty("relevanceRules");
+    const second = await caller.feed({
+      municipalityId: cityId,
+      lifeCircumstances: ["Renter"],
+      limit: 2,
+      cursor: first.nextCursor,
+    });
+    expect(second.items.map((item) => item.id)).toEqual([rows[2]!.id]);
+    expect(second.nextCursor).toBeUndefined();
+  });
+
+  it("keeps recency order and database pagination without a relevance profile", async () => {
+    const findMany = vi.fn().mockResolvedValue(rows.slice(0, 2));
+    const caller = feedCaller(findMany);
+    const page = await caller.feed({ municipalityId: cityId, limit: 1 });
+    expect(page.items.map((item) => item.id)).toEqual([rows[0]!.id]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 2,
+        orderBy: [{ latestActivity: "desc" }, { id: "desc" }],
+      }),
+    );
+    expect(findMany.mock.calls[0]![0]).not.toHaveProperty(
+      "select.relevanceRules",
+    );
+  });
+
+  it("returns nothing for a cursor that is not in the ranked feed", async () => {
+    const caller = feedCaller(vi.fn().mockResolvedValue(rows));
+    await expect(
+      caller.feed({
+        municipalityId: cityId,
+        lifeCircumstances: ["Renter"],
+        cursor: "44444444-4444-4444-8444-444444444444",
+      }),
+    ).resolves.toEqual({ items: [], nextCursor: undefined });
   });
 });

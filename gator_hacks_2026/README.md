@@ -81,9 +81,25 @@ Inspect `ingestion_runs` through trusted database tooling. Useful fields include
 
 Invoke reconciliation manually with the same bearer header to recover a missed webhook. It checks at most ten outstanding runs per request. Firecrawl retains API results for 24 hours after completion, so the 18:00 job normally recovers the 06:00 run before expiry. Run reconciliation promptly after deployment/database outages. Failed status reads older than 48 hours become terminal `results_unavailable` failures so old runs cannot block newer recovery.
 
-If submission acceptance is unknown, inspect Firecrawl's activity logs for the matching time and city list. After confirming the correct remote job, attach its ID to that run using trusted database tooling and set the run status to `processing`, then invoke reconciliation. Do not clear the window's claim or start a replacement job. There is deliberately no user-facing ingestion mutation or automatic retry of paid submissions. A missed schedule or failed job leaves a visible gap; there is no automatic historical backfill.
+If submission acceptance is unknown, inspect Firecrawl's activity logs for the matching time and city list. After confirming the correct remote job, attach its ID to that run using trusted database tooling and set the run status to `processing`, then invoke reconciliation. Do not clear the window's claim or start a replacement job. There is deliberately no user-facing ingestion mutation or automatic retry of paid submissions. DBAs may start one city run in two ways. The CLI runs from a machine with the server `.env`, needs no account role, and never runs in the browser: `pnpm ingest:city -- "Austin" "TX" --days 90`, with `--days` from 1 to 365 (default 30) and `--dry-run` to print the window without submitting. The tRPC procedure `ordinances.startCityIngestion` takes the same `city`, `state`, and `lookbackDays` and requires the signed-in Supabase user's `app_metadata.role` to equal `dba`. Grant the role with a service-role SQL update on `auth.users`, using the DBA's own email:
+
+```sql
+update auth.users
+set raw_app_meta_data = raw_app_meta_data || '{"role":"dba"}'::jsonb
+where email = 'dba@example.com';
+```
+
+Both paths submit one webhook-backed Agent job for that city's window ending at request time. Neither retries submission. Results persist through the webhook, so `APP_URL` must be reachable by Firecrawl. A missed schedule or failed job leaves a visible gap; there is no automatic historical backfill.
 
 For local testing, expose the dev server through an HTTPS tunnel and set `APP_URL` to that tunnel's origin before starting a job. Invoke cron routes with the bearer secret from a local HTTP client; never place secrets in query strings. A real manual submission consumes the daily claim and may use credits. Automated tests mock all Firecrawl calls and sign fixture webhooks locally, so they consume no credits.
+
+### Life circumstances
+
+The eleven life circumstances are rows in `life_circumstances`, not code constants. Each row has a stable `key` (the value saved on profiles), a display `label`, and a `description` that the crawler uses when tagging bills. Rows are seeded by `prisma/sql/ordinances.sql` with `ON CONFLICT DO NOTHING`, so re-running `pnpm db:ordinances` never overwrites edits. Set `active = false` to retire one: it disappears from the preferences modal and from the crawler prompt, while existing tags remain stored.
+
+The crawler tags each affected bill internally through `relevanceRules`. A rule names one group, and every circumstance in that rule must apply together. Alternative groups are separate rules. Tags are never shown in the feed. Results that name a missing or inactive key are dropped before storage. Descriptions are sent to the agent on each new run, so editing one changes future tagging but not stored bills.
+
+Preferences save only keys that exist in the table. `ordinances.feed` accepts optional `age` and `lifeCircumstances`. When either is present, the server ranks the full filtered feed by the number of matching rules, then by latest activity, and paginates that ranking with the same UUID cursor. Without them, the feed keeps database pagination by latest activity. Matching is still advisory and does not determine eligibility.
 
 ### Query interfaces and coverage limits
 

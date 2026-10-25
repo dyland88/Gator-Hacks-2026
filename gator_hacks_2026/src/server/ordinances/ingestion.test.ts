@@ -12,12 +12,18 @@ vi.mock("./firecrawl", () => ({
 
 import { type PrismaClient } from "../../../generated/prisma";
 import { normalizeMunicipality } from "~/lib/municipality";
-import { getAgentStatus, startAgent, startPreviewAgent } from "./firecrawl";
+import {
+  getAgentStatus,
+  requireIngestionConfig,
+  startAgent,
+  startPreviewAgent,
+} from "./firecrawl";
 import {
   changeIdentity,
   completeIngestion,
   reconcileIngestion,
   reportingWindow,
+  submitCityIngestion,
   submitDailyIngestion,
   submitPollingIngestion,
   withinWindow,
@@ -30,6 +36,9 @@ const city = {
   id: "ccf48957-3c42-462b-9ecf-95ad836e5da1",
 };
 const jobId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
+const circumstances = [
+  { key: "Renter", label: "Renter", description: "Rents a home." },
+];
 const now = new Date("2026-10-24T06:35:00Z");
 const change = {
   sourceIdentifier: "2026-01",
@@ -67,6 +76,9 @@ function database() {
   const changes = new Set<string>();
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([{ id: city.id }]),
+    lifeCircumstance: {
+      findMany: vi.fn().mockResolvedValue(circumstances),
+    },
     userProfile: {
       findMany: vi.fn().mockResolvedValue([
         {
@@ -215,6 +227,7 @@ describe("manual database ingestion", () => {
       cities: [city],
       windowStart,
       windowEnd: now,
+      lifeCircumstances: circumstances,
     });
     expect(startAgent).not.toHaveBeenCalled();
     expect(tx.ingestionRun.createMany.mock.invocationCallOrder[0]).toBeLessThan(
@@ -259,6 +272,52 @@ describe("manual database ingestion", () => {
       ),
     ).rejects.toThrow("Reporting window is already claimed");
     expect(startPreviewAgent).not.toHaveBeenCalled();
+  });
+
+  it("starts a DBA city run with the requested lookback and webhook correlation", async () => {
+    const { db, tx, run, changes } = database();
+    const windowStart = new Date(now.getTime() - 90 * 86_400_000);
+    Object.assign(run, { windowStart, windowEnd: now });
+    vi.mocked(startAgent).mockResolvedValueOnce(jobId);
+    const submitted = await submitCityIngestion(
+      { city, lookbackDays: 90 },
+      now,
+      db,
+    );
+    expect(requireIngestionConfig).toHaveBeenCalled();
+    expect(startAgent).toHaveBeenCalledWith({
+      cities: [expect.objectContaining({ key: city.key })],
+      windowStart,
+      windowEnd: now,
+      runId: run.id,
+      lifeCircumstances: circumstances,
+    });
+    expect(startPreviewAgent).not.toHaveBeenCalled();
+    expect(submitted.providerJobId).toBe(jobId);
+    expect(tx.ingestionRun.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [expect.objectContaining({ skippedCount: 0 })],
+      }),
+    );
+    expect(
+      await completeIngestion(
+        { jobId, runId: run.id, status: "completed", data: result() },
+        db,
+      ),
+    ).toBe("completed");
+    expect(changes.size).toBe(1);
+  });
+
+  it("does not create a run or spend credits when Firecrawl is not configured", async () => {
+    const { db, tx } = database();
+    vi.mocked(requireIngestionConfig).mockImplementationOnce(() => {
+      throw new Error("Ordinance ingestion is not configured");
+    });
+    await expect(
+      submitCityIngestion({ city, lookbackDays: 30 }, now, db),
+    ).rejects.toThrow("Ordinance ingestion is not configured");
+    expect(tx.ingestionRun.createMany).not.toHaveBeenCalled();
+    expect(startAgent).not.toHaveBeenCalled();
   });
 });
 
@@ -366,13 +425,36 @@ describe("daily submission", () => {
 });
 
 describe("result persistence", () => {
-  it("keeps only relevance rules supported by the change excerpt and pins their source", async () => {
+  it("keeps inferred relevance rules without an explicit mention and pins their source", async () => {
     const { db, tx } = database();
     const rule = {
-      ageMin: 65,
+      ageMin: null,
       ageMax: null,
       lifeCircumstances: ["Renter"],
-      evidenceExcerpt: "Renters aged 65 and older.",
+      evidenceExcerpt: "Tenants must receive notice before eviction.",
+    };
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([{ ...change, relevanceRules: [rule] }]),
+      },
+      db,
+    );
+    expect(tx.ordinance.upsert.mock.calls[0]?.[0]).toMatchObject({
+      create: {
+        relevanceRules: [{ ...rule, evidenceUrl: change.evidenceUrl }],
+      },
+    });
+  });
+
+  it("drops relevance rules that name life circumstances missing from the database", async () => {
+    const { db, tx } = database();
+    const supported = {
+      ageMin: null,
+      ageMax: null,
+      lifeCircumstances: ["Renter"],
+      evidenceExcerpt: "Renters must register.",
     };
     await completeIngestion(
       {
@@ -381,19 +463,20 @@ describe("result persistence", () => {
         data: result([
           {
             ...change,
-            evidenceExcerpt: `${change.evidenceExcerpt} ${rule.evidenceExcerpt}`,
+            evidenceExcerpt: `${change.evidenceExcerpt} ${supported.evidenceExcerpt}`,
             relevanceRules: [
-              rule,
-              { ...rule, evidenceExcerpt: "Unsupported claim." },
+              supported,
+              { ...supported, lifeCircumstances: ["Renter", "Invented"] },
             ],
           },
         ]),
       },
       db,
     );
+    expect(tx.lifeCircumstance.findMany).toHaveBeenCalled();
     expect(tx.ordinance.upsert.mock.calls[0]?.[0]).toMatchObject({
       create: {
-        relevanceRules: [{ ...rule, evidenceUrl: change.evidenceUrl }],
+        relevanceRules: [{ ...supported, evidenceUrl: change.evidenceUrl }],
       },
     });
   });

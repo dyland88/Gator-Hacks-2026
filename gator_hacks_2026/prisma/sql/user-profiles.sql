@@ -18,10 +18,36 @@ ALTER TABLE public.user_profiles DROP COLUMN IF EXISTS gender;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS life_circumstances text[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_life_circumstances_check;
 ALTER TABLE public.user_profiles ADD CONSTRAINT user_profiles_life_circumstances_check CHECK (
-  cardinality(life_circumstances) <= 11 AND
-  array_position(life_circumstances, NULL) IS NULL AND
-  life_circumstances <@ ARRAY['Student', 'Renter', 'Homeowner', 'Parent or guardian', 'Caregiver', 'Employed', 'Job seeker', 'Small-business owner', 'Retired', 'Veteran', 'Person with a disability']::text[]
+  cardinality(life_circumstances) <= 20 AND
+  array_position(life_circumstances, NULL) IS NULL
 );
+
+CREATE OR REPLACE FUNCTION public.user_profiles_validate_life_circumstances()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM unnest(NEW.life_circumstances) AS selected(value)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.life_circumstances lc
+      WHERE lc.key = selected.value AND lc.active
+    )
+  ) THEN
+    RAISE EXCEPTION 'Unknown life circumstance' USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS user_profiles_validate_life_circumstances ON public.user_profiles;
+CREATE TRIGGER user_profiles_validate_life_circumstances
+BEFORE INSERT OR UPDATE OF life_circumstances ON public.user_profiles
+FOR EACH ROW EXECUTE FUNCTION public.user_profiles_validate_life_circumstances();
 
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.user_profiles FROM PUBLIC, anon, authenticated;

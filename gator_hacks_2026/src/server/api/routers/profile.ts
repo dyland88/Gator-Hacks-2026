@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 
 import { profileInputSchema } from "~/lib/profile";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { loadLifeCircumstances } from "~/server/ordinances/life-circumstances";
 
 const profileFields =
   "id,tags,age,life_circumstances,weekly_digest_enabled,location,location_id,created_at,updated_at";
@@ -23,6 +24,14 @@ export const profileRouter = createTRPCRouter({
   save: protectedProcedure
     .input(profileInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const known = new Set(
+        (await loadLifeCircumstances(ctx.db)).map((option) => option.key),
+      );
+      if (input.lifeCircumstances.some((value) => !known.has(value)))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Choose life circumstances from the current list.",
+        });
       const { data, error } = await ctx.supabase
         .from("user_profiles")
         .upsert(

@@ -21,9 +21,12 @@ import {
   startPreviewAgent,
 } from "./firecrawl";
 import { interestOptions } from "~/lib/profile";
-import { agentJsonSchema, changeSchema } from "./schema";
+import { buildAgentJsonSchema, changeSchema } from "./schema";
 
 const jobId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
+const circumstances = [
+  { key: "Renter", label: "Renter", description: "Rents a home." },
+];
 
 beforeEach(() => vi.unstubAllGlobals());
 
@@ -33,12 +36,19 @@ describe("Firecrawl Agent transport", () => {
       cities: [],
       windowStart: new Date("2026-10-01T00:00Z"),
       windowEnd: new Date("2026-10-02T00:00Z"),
+      lifeCircumstances: circumstances,
     });
     for (const topic of interestOptions) expect(prompt).toContain(`${topic}:`);
     expect(
-      agentJsonSchema.properties.cities.items.properties.changes.items
-        .properties.topics.items.enum,
+      buildAgentJsonSchema(["Renter"]).properties.cities.items.properties
+        .changes.items.properties.topics.items.enum,
     ).toEqual(interestOptions);
+    expect(prompt).toContain("Renter: Rents a home.");
+    expect(
+      buildAgentJsonSchema(["Renter"]).properties.cities.items.properties
+        .changes.items.properties.relevanceRules.items.properties
+        .lifeCircumstances.items.enum,
+    ).toEqual(["Renter"]);
     expect(changeSchema.shape.topics.safeParse(["Invented tag"]).success).toBe(
       false,
     );
@@ -63,6 +73,7 @@ describe("Firecrawl Agent transport", () => {
       ],
       windowStart: new Date("2026-09-24T06:00:00Z"),
       windowEnd: new Date("2026-10-24T06:00:00Z"),
+      lifeCircumstances: circumstances,
     };
     try {
       await expect(startPreviewAgent(input)).resolves.toBe(jobId);
@@ -102,6 +113,7 @@ describe("Firecrawl Agent transport", () => {
         ],
         windowStart: new Date("2026-10-23T06:00Z"),
         windowEnd: new Date("2026-10-24T06:00Z"),
+        lifeCircumstances: circumstances,
       }),
     ).resolves.toBe(jobId);
     expect(fetch).toHaveBeenCalledOnce();
@@ -150,6 +162,7 @@ describe("Firecrawl Agent transport", () => {
         cities: [],
         windowStart: new Date(),
         windowEnd: new Date(),
+        lifeCircumstances: circumstances,
       }),
     ).rejects.toThrow("provider_rejected");
     expect(fetch).toHaveBeenCalledOnce();
@@ -165,6 +178,7 @@ describe("Firecrawl Agent transport", () => {
         cities: [],
         windowStart: new Date(),
         windowEnd: new Date(),
+        lifeCircumstances: circumstances,
       }),
     ).rejects.toThrow("submission_unknown");
   });

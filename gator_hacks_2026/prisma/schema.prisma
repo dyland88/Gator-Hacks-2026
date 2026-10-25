@@ -2,8 +2,9 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -109,4 +110,14 @@ model OrdinanceChange {
   @@index([ordinanceId, activityDate])
   @@index([activityDate, id])
   @@map("ordinance_changes")
+}
+
+model LifeCircumstance {
+  key         String  @id
+  label       String
+  description String
+  sortOrder   Int     @default(0)
+  active      Boolean @default(true)
+
+  @@map("life_circumstances")
 }

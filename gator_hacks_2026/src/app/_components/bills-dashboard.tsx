@@ -9,7 +9,6 @@ import {
   guestProfileSchema,
   storedProfileInputSchema,
   interestOptions,
-  lifeCircumstanceOptions,
   profileInputSchema,
 } from "~/lib/profile";
 import { supabase } from "~/lib/supabase-client";
@@ -68,6 +67,14 @@ export function BillsDashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const lifeCircumstanceQuery = api.ordinances.lifeCircumstances.useQuery(
+    undefined,
+    { staleTime: 300_000 },
+  );
+  const lifeCircumstanceOptions = lifeCircumstanceQuery.data ?? [];
+  const knownLifeCircumstances = new Set(
+    lifeCircumstanceOptions.map((option) => option.key),
+  );
   const utils = api.useUtils();
   const saveProfileMutation = api.profile.save.useMutation();
   const [locations, setLocations] = useState<LocationResult[]>([]);
@@ -309,7 +316,9 @@ export function BillsDashboard() {
     setProfileError(null);
     const result = profileInputSchema.safeParse({
       tags: draft.interests,
-      lifeCircumstances: draft.lifeCircumstances,
+      lifeCircumstances: draft.lifeCircumstances.filter((value) =>
+        knownLifeCircumstances.has(value),
+      ),
       weeklyDigestEnabled: draft.weeklyDigestEnabled,
       age: draft.age ? Number(draft.age) : null,
       location: draft.location || null,
@@ -425,14 +434,14 @@ export function BillsDashboard() {
             className="shrink-0 object-contain brightness-0 invert"
             aria-hidden="true"
           />
-          <span className="font-mono-ui text-[13px] tracking-[0.18em] uppercase">
+          <span className="font-mono-ui text-[14px] tracking-[0.18em] uppercase">
             Legal Seagull
           </span>
         </div>
         <button
           type="button"
           onClick={() => signupDialogRef.current?.showModal()}
-          className="font-mono-ui border-surface-cream/50 hover:bg-surface-cream hover:text-primary cursor-pointer rounded-full border px-4 py-2 text-[11px] tracking-[0.12em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="font-mono-ui border-surface-cream/50 hover:bg-surface-cream hover:text-primary cursor-pointer rounded-full border px-4 py-2 text-[14px] tracking-[0.12em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           {signedInEmail ? "Account" : "Sign in"}
         </button>
@@ -468,7 +477,7 @@ export function BillsDashboard() {
             <button
               type="button"
               onClick={openDetails}
-              className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui cursor-pointer rounded-full border px-4 py-2.5 text-[11px] tracking-[0.1em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-4"
+              className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui cursor-pointer rounded-full border px-4 py-2.5 text-[14px] tracking-[0.1em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-4"
             >
               {profile.location || profile.interests.length
                 ? "Edit preferences"
@@ -476,18 +485,29 @@ export function BillsDashboard() {
             </button>
           </div>
 
+          {(profile.location || profile.age) && (
+            <p className="font-mono-ui text-primary/65 mb-6 text-[14px] tracking-[0.08em]">
+              {profile.location}
+              {profile.age && (
+                <>
+                  {profile.location && " · "}Age {profile.age}
+                </>
+              )}
+            </p>
+          )}
+
           {profile.interests.length > 0 && (
             <div
               className="mb-6 flex flex-wrap items-center gap-2"
               aria-label="Your interests"
             >
-              <span className="font-mono-ui text-primary/65 mr-1 text-[11px] tracking-[0.08em] uppercase">
+              <span className="font-mono-ui text-primary/65 mr-1 text-[14px] tracking-[0.08em] uppercase">
                 Following
               </span>
               {profile.interests.map((interest) => (
                 <span
                   key={interest}
-                  className="border-primary/30 bg-surface-cream rounded-full border px-3 py-1 text-[12px]"
+                  className="border-primary/30 bg-surface-cream rounded-full border px-3 py-1 text-[14px]"
                 >
                   {interest}
                 </span>
@@ -526,7 +546,7 @@ export function BillsDashboard() {
               <h2 className="font-display text-[22px] leading-tight">
                 Ask Legal Seagull
               </h2>
-              <p className="font-mono-ui text-primary/60 text-[10px] tracking-[0.1em] uppercase">
+              <p className="font-mono-ui text-primary/60 text-[14px] tracking-[0.1em] uppercase">
                 AI chat workspace
               </p>
             </div>
@@ -535,7 +555,7 @@ export function BillsDashboard() {
                 type="button"
                 onClick={clearChat}
                 disabled={chatMutation.isPending}
-                className="font-mono-ui text-primary/65 hover:text-primary cursor-pointer text-[9px] tracking-[0.1em] uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                className="font-mono-ui text-primary/65 hover:text-primary cursor-pointer text-[14px] tracking-[0.1em] uppercase disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Clear
               </button>
@@ -565,7 +585,7 @@ export function BillsDashboard() {
               <h3 className="font-display text-[25px]">
                 Make sense of what matters.
               </h3>
-              <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[13px] leading-6">
+              <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[14px] leading-6">
                 Ask about legislation, civic processes, and what a bill could
                 mean in plain language.
               </p>
@@ -583,10 +603,11 @@ export function BillsDashboard() {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[13px] leading-5 whitespace-pre-wrap ${message.role === "user"
-                      ? "bg-primary text-surface-cream rounded-br-sm"
-                      : "bg-surface-cream border-primary/15 rounded-bl-sm border"
-                      }`}
+                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[14px] leading-5 whitespace-pre-wrap ${
+                      message.role === "user"
+                        ? "bg-primary text-surface-cream rounded-br-sm"
+                        : "bg-surface-cream border-primary/15 rounded-bl-sm border"
+                    }`}
                   >
                     {message.content}
                   </div>
@@ -615,14 +636,14 @@ export function BillsDashboard() {
             {chatError && (
               <div
                 role="alert"
-                className="border-primary/20 bg-surface-cream mb-3 rounded-xl border px-3 py-2.5 text-[11px] leading-4"
+                className="border-primary/20 bg-surface-cream mb-3 rounded-xl border px-3 py-2.5 text-[14px] leading-4"
               >
                 <p>{chatError}</p>
                 <button
                   type="button"
                   onClick={retryChat}
                   disabled={chatMutation.isPending}
-                  className="font-mono-ui mt-2 cursor-pointer text-[9px] tracking-[0.1em] uppercase underline underline-offset-2 disabled:cursor-not-allowed"
+                  className="font-mono-ui mt-2 cursor-pointer text-[14px] tracking-[0.1em] uppercase underline underline-offset-2 disabled:cursor-not-allowed"
                 >
                   Try again
                 </button>
@@ -640,7 +661,7 @@ export function BillsDashboard() {
                 disabled={chatMutation.isPending}
                 placeholder="Ask Legal Seagull…"
                 aria-label="Message Legal Seagull"
-                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
+                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[14px] outline-none disabled:cursor-wait"
               />
               <button
                 type="submit"
@@ -661,7 +682,7 @@ export function BillsDashboard() {
         className="bg-surface-cream text-primary font-body border-primary/20 m-auto max-h-[90vh] w-[min(92vw,560px)] overflow-y-auto rounded-[24px] border p-0 shadow-2xl backdrop:bg-gray-500/65"
       >
         <form onSubmit={saveProfile} className="p-7 sm:p-9">
-          <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
+          <p className="font-mono-ui text-[14px] tracking-[0.14em] uppercase">
             Set up your feed
           </p>
           <h2
@@ -676,13 +697,16 @@ export function BillsDashboard() {
               ? "Your choices are saved to your account."
               : "Your choices are saved on this device. Sign in to save them to your account."}{" "}
             Your location and topics filter the feed. Optional age and life
-            circumstances highlight source-supported relevance.
+            circumstances move bills that explicitly affect you to the top.
           </p>
           <div className="mt-7 grid gap-5">
             <fieldset>
-              <legend className="text-[13px] font-semibold">
+              <legend className="text-[14px] font-semibold">
                 Topics you care about
               </legend>
+              <p className="text-primary/65 mt-1 text-[14px]">
+                Pick any number of topics. You can change them later.
+              </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {interestOptions.map((interest) => {
                   const selected = draft.interests.includes(interest);
@@ -701,7 +725,7 @@ export function BillsDashboard() {
                             : [...current.interests, interest],
                         }))
                       }
-                      className={`cursor-pointer rounded-full border px-4 py-2 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selected ? "border-primary bg-primary text-surface-cream" : "border-primary/30 bg-surface-tan/40 hover:bg-surface-tan"}`}
+                      className={`cursor-pointer rounded-full border px-4 py-2 text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selected ? "border-primary bg-primary text-surface-cream" : "border-primary/30 bg-surface-tan/40 hover:bg-surface-tan"}`}
                     >
                       {interest}
                     </button>
@@ -709,7 +733,7 @@ export function BillsDashboard() {
                 })}
               </div>
             </fieldset>
-            <div className="flex flex-col gap-2 text-[13px] font-semibold">
+            <div className="flex flex-col gap-2 text-[14px] font-semibold">
               <label htmlFor="location-search">Location (optional)</label>
               <div className="relative">
                 <input
@@ -765,7 +789,7 @@ export function BillsDashboard() {
                             setLookupStatus("idle");
                             locationInputRef.current?.focus();
                           }}
-                          className="hover:bg-surface-tan focus:bg-surface-tan w-full cursor-pointer rounded-md px-3 py-2 text-left text-[13px] font-normal focus-visible:outline-none"
+                          className="hover:bg-surface-tan focus:bg-surface-tan w-full cursor-pointer rounded-md px-3 py-2 text-left text-[14px] font-normal focus-visible:outline-none"
                         >
                           {locationLabel(place)}
                         </button>
@@ -776,7 +800,7 @@ export function BillsDashboard() {
               </div>
               <p
                 id="location-help"
-                className="text-primary/65 text-[11px] font-normal"
+                className="text-primary/65 text-[14px] font-normal"
               >
                 {lookupStatus === "loading"
                   ? "Searching locations…"
@@ -794,7 +818,7 @@ export function BillsDashboard() {
                             ? "Enter all 5 digits of a US ZIP code."
                             : "Type at least 3 characters, then choose a match."}
               </p>
-              <p className="text-primary/55 text-[10px] font-normal">
+              <p className="text-primary/55 text-[14px] font-normal">
                 Location data: GeoNames via{" "}
                 <a
                   href="https://open-meteo.com/en/docs/geocoding-api"
@@ -815,7 +839,7 @@ export function BillsDashboard() {
                 </a>
               </p>
             </div>
-            <label className="flex flex-col gap-2 text-[13px] font-semibold">
+            <label className="flex flex-col gap-2 text-[14px] font-semibold">
               Age for relevance (optional)
               <input
                 type="number"
@@ -835,41 +859,53 @@ export function BillsDashboard() {
             </label>
           </div>
           <fieldset className="border-primary/20 mt-6 border-t pt-5">
-            <legend className="text-[13px] font-semibold">
+            <legend className="text-[14px] font-semibold">
               Life circumstances (optional)
             </legend>
             <p
               id="circumstances-help"
-              className="text-primary/70 mt-2 text-[12px] leading-5"
+              className="text-primary/70 mt-2 text-[14px] leading-5"
             >
               This information is used to improve the relevance
               of the legislation presented to you. This will not exclude results from
               your feed.
             </p>
+            {lifeCircumstanceQuery.isError ? (
+              <p role="alert" className="mt-3 text-[14px]">
+                Life circumstances could not be loaded. Refresh the page to try
+                again.
+              </p>
+            ) : lifeCircumstanceQuery.isPending ? (
+              <p role="status" className="mt-3 text-[14px]">
+                Loading life circumstances…
+              </p>
+            ) : lifeCircumstanceOptions.length === 0 ? (
+              <p role="status" className="mt-3 text-[14px]">
+                No life circumstances are available yet.
+              </p>
+            ) : null}
             <div
               className="mt-3 flex flex-wrap gap-2"
               aria-describedby="circumstances-help"
             >
-              {lifeCircumstanceOptions.map((value) => (
+              {lifeCircumstanceOptions.map(({ key, label }) => (
                 <button
-                  key={value}
+                  key={key}
                   type="button"
-                  aria-pressed={draft.lifeCircumstances.includes(value)}
+                  aria-pressed={draft.lifeCircumstances.includes(key)}
                   onClick={() =>
                     setDraft((current) => ({
                       ...current,
-                      lifeCircumstances: current.lifeCircumstances.includes(
-                        value,
-                      )
+                      lifeCircumstances: current.lifeCircumstances.includes(key)
                         ? current.lifeCircumstances.filter(
-                          (item) => item !== value,
-                        )
-                        : [...current.lifeCircumstances, value],
+                            (item) => item !== key,
+                          )
+                        : [...current.lifeCircumstances, key],
                     }))
                   }
-                  className={`cursor-pointer rounded-full border px-3 py-2 text-[12px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(value) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
+                  className={`cursor-pointer rounded-full border px-3 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(key) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
                 >
-                  {value}
+                  {label}
                 </button>
               ))}
             </div>
@@ -902,14 +938,14 @@ export function BillsDashboard() {
             <button
               type="button"
               onClick={skipOnboarding}
-              className="font-mono-ui cursor-pointer px-4 py-3 text-[11px] tracking-[0.08em] uppercase"
+              className="font-mono-ui cursor-pointer px-4 py-3 text-[14px] tracking-[0.08em] uppercase"
             >
               Not now
             </button>
             <button
               type="submit"
               disabled={saveProfileMutation.isPending || profileLoading}
-              className="bg-primary text-surface-cream font-mono-ui cursor-pointer rounded-full px-6 py-3 text-[11px] tracking-[0.08em] uppercase"
+              className="bg-primary text-surface-cream font-mono-ui cursor-pointer rounded-full px-6 py-3 text-[14px] tracking-[0.08em] uppercase"
             >
               {saveProfileMutation.isPending ? "Saving…" : "Save preferences"}
             </button>
