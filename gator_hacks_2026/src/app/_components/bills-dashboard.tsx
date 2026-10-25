@@ -333,8 +333,32 @@ export function BillsDashboard() {
     const userId = activeUserRef.current;
     try {
       if (userId) {
-        await saveProfileMutation.mutateAsync(result.data);
+        const saved = await saveProfileMutation.mutateAsync(result.data);
         if (activeUserRef.current !== userId) return;
+        if (saved.signupDigestStatus === "sent") {
+          setProfileError(
+            "Preferences saved. Your 30-day digest has been sent to your confirmed email.",
+          );
+        } else if (saved.signupDigestStatus === "unconfirmed") {
+          setProfileError(
+            "Preferences saved. Confirm your account email, then save your preferences again to receive your first digest.",
+          );
+        } else if (saved.signupDigestStatus === "skipped") {
+          setProfileError(
+            "Preferences saved, but a supported city was not found. Choose a city to receive local ordinance digests.",
+          );
+        } else if (
+          saved.signupDigestStatus === "failed" ||
+          saved.signupDigestStatus === "unknown"
+        ) {
+          setProfileError(
+            "Preferences saved, but the digest email could not be confirmed as delivered. Your weekly email preference is still active.",
+          );
+        } else if (saved.signupDigestStatus === "already-processed") {
+          setProfileError(
+            "This digest has already been processed. Your weekly email preference is still active.",
+          );
+        }
       } else {
         window.localStorage.setItem(
           "ledgerline-guest-onboarding",
@@ -923,9 +947,12 @@ export function BillsDashboard() {
               className="accent-primary mt-0.5 h-4 w-4 shrink-0"
             />
             <span>
-              <span className="font-semibold">Email me a weekly local ordinance digest</span>
+              <span className="font-semibold">
+                Email me a weekly local ordinance digest
+              </span>
               <span className="text-primary/65 mt-1 block text-[11px] leading-5 font-normal">
-                Sent to your confirmed account email, with new activity from your selected city. You can unsubscribe at any time.
+                Sent to your confirmed account email, with new activity from
+                your selected city. You can unsubscribe at any time.
               </span>
             </span>
           </label>

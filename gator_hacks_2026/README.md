@@ -8,7 +8,7 @@ We are using postgresql with supabase
 
 Legal Seagull uses Firecrawl **Agent** (`POST /v2/agent`), not `/scrape` or `/extract`, to research ordinance activity across saved users' U.S. cities. Firecrawl announced Agent on [December 18, 2025](https://www.firecrawl.dev/blog/introducing-agent), within the past year for the October 2026 hackathon. See the [Agent API](https://docs.firecrawl.dev/features/agent) and [webhook signature documentation](https://docs.firecrawl.dev/webhooks/security).
 
-The backend stores current ordinance snapshots and dated change history. The dashboard displays those records with descriptions, source links, topic tags, and segmented legislative-stage indicators. Signed-in users can opt into a weekly email with new ordinance activity from their selected city. Guest preferences remain browser-only and do not determine monitored cities.
+The backend stores current ordinance snapshots and dated change history. The dashboard displays those records with descriptions, source links, topic tags, and segmented legislative-stage indicators. Signed-in users can opt into a weekly email with new ordinance activity from their selected city. First-time opt-in sends a digest for the past seven days immediately. Existing opted-in accounts without a recorded prior delivery also receive that initial digest; the Monday schedule continues, so either kind of first-time recipient may receive both emails in that first week. Guest preferences remain browser-only and do not determine monitored cities.
 
 ### Age and life circumstances
 
@@ -58,9 +58,9 @@ Set the Vercel project Root Directory to `gator_hacks_2026` so its `vercel.json`
 | --- | --- | --- |
 | `GET /api/cron/ordinances` | 06:00 daily | Claims the reporting window and submits at most one Agent job containing all eligible cities |
 | `GET /api/cron/ordinances/reconcile` | 18:00 daily | Retrieves unfinished jobs; never submits another Agent job |
-| `GET /api/cron/ordinance-digest` | 13:00 Monday | Sends the previous completed week's changes to opted-in accounts |
+| `GET /api/cron/ordinance-digest` | 13:00 Monday | Sends any missing first-time seven-day digests, then the previous completed week's changes to opted-in accounts |
 
-Vercel sends `Authorization: Bearer <CRON_SECRET>`. Both routes reject unauthenticated requests and disable caching. Hobby schedules can arrive within the scheduled hour, so the reporting window is fixed at 06:00 UTC rather than invocation time. [Vercel cron behavior](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
+Vercel sends `Authorization: Bearer <CRON_SECRET>`. All cron routes reject unauthenticated requests and disable caching. Hobby schedules can arrive within the scheduled hour, so the reporting window is fixed at 06:00 UTC rather than invocation time. [Vercel cron behavior](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
 
 For example, the October 24 run asks about `[2026-10-23T06:00:00Z, 2026-10-24T06:00:00Z)`. The first deployment does not backfill earlier history. The profile's city/state/country label is normalized, removing ZIP prefixes and combining ZIP/city search IDs. Only recognized U.S. states and Washington, DC are eligible; missing IDs, ambiguous labels, territories, and non-U.S. labels are skipped and counted. No age, life circumstances, interests, account IDs, or email addresses are sent to Firecrawl.
 

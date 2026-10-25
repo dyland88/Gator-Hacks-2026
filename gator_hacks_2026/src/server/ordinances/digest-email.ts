@@ -18,17 +18,23 @@ type DigestChange = Awaited<
   ReturnType<typeof getDigestChanges>
 >["items"][number];
 
-function completedWeek(reference: Date) {
-  const thisMonday = new Date(
+type DigestKind = "weekly" | "signup" | "preference";
+type DigestRange = { from: string; to: string; weekStart: string };
+
+function mondayOf(reference: Date) {
+  const monday = new Date(
     Date.UTC(
       reference.getUTCFullYear(),
       reference.getUTCMonth(),
       reference.getUTCDate(),
     ),
   );
-  thisMonday.setUTCDate(
-    thisMonday.getUTCDate() - ((thisMonday.getUTCDay() + 6) % 7),
-  );
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  return monday;
+}
+
+function completedWeek(reference: Date) {
+  const thisMonday = mondayOf(reference);
   const weekStart = new Date(thisMonday);
   weekStart.setUTCDate(weekStart.getUTCDate() - 7);
   const weekEnd = new Date(thisMonday);
@@ -37,6 +43,23 @@ function completedWeek(reference: Date) {
     from: weekStart.toISOString().slice(0, 10),
     to: weekEnd.toISOString().slice(0, 10),
     weekStart: weekStart.toISOString().slice(0, 10),
+  };
+}
+
+function trailingMonth(reference: Date): DigestRange {
+  const end = new Date(
+    Date.UTC(
+      reference.getUTCFullYear(),
+      reference.getUTCMonth(),
+      reference.getUTCDate(),
+    ),
+  );
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 29);
+  return {
+    from: start.toISOString().slice(0, 10),
+    to: end.toISOString().slice(0, 10),
+    weekStart: mondayOf(reference).toISOString().slice(0, 10),
   };
 }
 
@@ -100,10 +123,14 @@ async function changesForMunicipality(
 function emailMarkup(
   recipient: Recipient,
   changes: DigestChange[],
-  range: ReturnType<typeof completedWeek>,
+  range: DigestRange,
   unsubscribeUrl: string,
+  kind: DigestKind,
+  municipalityLabel?: string,
 ) {
-  const municipality = changes[0]?.ordinance.municipality.label ?? "your area";
+  const municipality =
+    changes[0]?.ordinance.municipality.label ?? municipalityLabel ?? "your area";
+  const periodTitle = kind === "weekly" ? "This week" : "Your past 30 days";
   const entries = changes
     .map((change) => {
       const title = escapeHtml(change.ordinance.name);
@@ -124,16 +151,19 @@ function emailMarkup(
     })
     .join("\n\n");
   return {
-    subject: `Your weekly ordinance update for ${municipality}`,
-    html: `<div style="margin:0;background:#f3efe5;padding:28px 12px;color:#19372d;font-family:Georgia,serif"><div style="max-width:620px;margin:auto;background:#fffdf7;padding:32px;border-radius:14px"><p style="font-family:monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase">Ledgerline · Local government</p><h1 style="font-size:30px;line-height:1.15">This week in ${escapeHtml(municipality)}</h1><p style="color:#56645c;line-height:1.6">${range.from} through ${range.to}: ${changes.length} ordinance ${changes.length === 1 ? "update" : "updates"} matching your saved location${recipient.tags.length ? " and topics" : ""}.</p><ol style="padding-left:20px">${entries}</ol><hr style="border:0;border-top:1px solid #dedbd1;margin:28px 0"><p style="font-size:12px;line-height:1.6;color:#56645c">You received this because you opted in to Ledgerline's weekly ordinance email. <a href="${escapeHtml(unsubscribeUrl)}">Manage this email preference</a>.</p></div></div>`,
-    text: `This week in ${municipality}\n${range.from} through ${range.to}\n\n${text}\n\nUnsubscribe: ${unsubscribeUrl}`,
+    subject: `${kind === "weekly" ? "Your weekly" : kind === "preference" ? "Your updated" : "Your recent"} ordinance update for ${municipality}`,
+    html: `<div style="margin:0;background:#f3efe5;padding:28px 12px;color:#19372d;font-family:Georgia,serif"><div style="max-width:620px;margin:auto;background:#fffdf7;padding:32px;border-radius:14px"><p style="font-family:monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase">Legal Seagull · Local government</p><h1 style="font-size:30px;line-height:1.15">${periodTitle} in ${escapeHtml(municipality)}</h1><p style="color:#56645c;line-height:1.6">${range.from} through ${range.to}: ${changes.length} ordinance ${changes.length === 1 ? "update" : "updates"} matching your saved location${recipient.tags.length ? " and topics" : ""}.</p>${changes.length ? `<ol style="padding-left:20px">${entries}</ol>` : "<p>No matching ordinance activity was found in the database for this period.</p>"}<hr style="border:0;border-top:1px solid #dedbd1;margin:28px 0"><p style="font-size:12px;line-height:1.6;color:#56645c">You received this because you opted in to Legal Seagull's weekly ordinance email. <a href="${escapeHtml(unsubscribeUrl)}">Manage this email preference</a>.</p></div></div>`,
+    text: `Legal Seagull · Local government\n\n${periodTitle} in ${municipality}\n${range.from} through ${range.to}\n\n${changes.length ? text : "No matching ordinance activity was found in the database for this period."}\n\nUnsubscribe: ${unsubscribeUrl}`,
   };
 }
 
 async function sendEmail(input: {
   recipient: Recipient;
   changes: DigestChange[];
-  range: ReturnType<typeof completedWeek>;
+  range: DigestRange;
+  kind: DigestKind;
+  municipalityLabel?: string;
+  deliveryKey?: string;
 }) {
   if (!env.RESEND_API_KEY || !env.EMAIL_FROM || !env.APP_URL)
     throw new Error("Weekly email delivery is not configured.");
@@ -148,16 +178,18 @@ async function sendEmail(input: {
     input.changes,
     input.range,
     unsubscribe.href,
+    input.kind,
+    input.municipalityLabel,
   );
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
-      "Idempotency-Key": `weekly-ordinance-digest/${input.recipient.userId}/${input.range.weekStart}`,
+      "Idempotency-Key": `${input.kind}-ordinance-digest/${input.recipient.userId}/${input.range.weekStart}${input.deliveryKey ? `/${input.deliveryKey}` : ""}`,
     },
     body: JSON.stringify({
-      from: env.EMAIL_FROM,
+      from: `Legal Seagull <${env.EMAIL_FROM.match(/<([^<>]+)>/)?.[1] ?? env.EMAIL_FROM.trim()}>`,
       to: [input.recipient.email],
       subject: message.subject,
       html: message.html,
@@ -174,11 +206,15 @@ async function sendEmail(input: {
   return result.id ?? null;
 }
 
-async function claimDelivery(userId: string, weekStart: string) {
+async function claimDelivery(
+  userId: string,
+  weekStart: string,
+  kind: DigestKind,
+) {
   const rows = await db.$queryRaw<{ user_id: string }[]>`
-    INSERT INTO public.weekly_digest_deliveries (user_id, week_start, status)
-    VALUES (${userId}::uuid, ${weekStart}::date, 'sending')
-    ON CONFLICT (user_id, week_start) DO UPDATE
+    INSERT INTO public.weekly_digest_deliveries (user_id, week_start, digest_type, status)
+    VALUES (${userId}::uuid, ${weekStart}::date, ${kind}, 'sending')
+    ON CONFLICT (user_id, week_start, digest_type) DO UPDATE
       SET status = 'sending', failure_code = NULL, updated_at = now()
       WHERE public.weekly_digest_deliveries.status = 'failed'
     RETURNING user_id
@@ -186,9 +222,22 @@ async function claimDelivery(userId: string, weekStart: string) {
   return rows.length > 0;
 }
 
+async function hasPriorDelivery(userId: string) {
+  const rows = await db.$queryRaw<{ delivered: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.weekly_digest_deliveries
+      WHERE user_id = ${userId}::uuid
+        AND status IN ('sent', 'unknown', 'sending')
+    ) AS delivered
+  `;
+  return rows[0]?.delivered ?? false;
+}
+
 async function setDeliveryStatus(
   userId: string,
   weekStart: string,
+  kind: DigestKind,
   status: "sent" | "failed" | "unknown",
   providerEmailId?: string | null,
   failureCode?: string,
@@ -201,6 +250,43 @@ async function setDeliveryStatus(
         updated_at = now(),
         sent_at = CASE WHEN ${status} = 'sent' THEN now() ELSE NULL END
     WHERE user_id = ${userId}::uuid AND week_start = ${weekStart}::date
+      AND digest_type = ${kind}
+  `;
+}
+
+async function claimPreferenceDelivery(
+  userId: string,
+  profileUpdatedAt: string,
+) {
+  const rows = await db.$queryRaw<{ user_id: string }[]>`
+    INSERT INTO public.preference_digest_deliveries (user_id, profile_updated_at, status)
+    VALUES (${userId}::uuid, ${profileUpdatedAt}::timestamptz, 'sending')
+    ON CONFLICT (user_id, profile_updated_at) DO UPDATE
+      SET status = 'sending', failure_code = NULL, updated_at = now()
+      WHERE public.preference_digest_deliveries.status = 'failed'
+        OR (public.preference_digest_deliveries.status = 'sending'
+            AND public.preference_digest_deliveries.updated_at < now() - interval '30 minutes')
+    RETURNING user_id
+  `;
+  return rows.length > 0;
+}
+
+async function setPreferenceDeliveryStatus(
+  userId: string,
+  profileUpdatedAt: string,
+  status: "sent" | "failed" | "unknown",
+  providerEmailId?: string | null,
+  failureCode?: string,
+) {
+  await db.$executeRaw`
+    UPDATE public.preference_digest_deliveries
+    SET status = ${status},
+        provider_email_id = ${providerEmailId ?? null},
+        failure_code = ${failureCode ?? null},
+        updated_at = now(),
+        sent_at = CASE WHEN ${status} = 'sent' THEN now() ELSE NULL END
+    WHERE user_id = ${userId}::uuid
+      AND profile_updated_at = ${profileUpdatedAt}::timestamptz
   `;
 }
 
@@ -229,9 +315,17 @@ export async function sendWeeklyOrdinanceDigests(reference = new Date()) {
     LIMIT 1000
   `;
   const municipalityChanges = new Map<string, Promise<DigestChange[]>>();
+  const signupResults: Array<
+    "sent" | "failed" | "unknown" | "skipped" | "already-processed"
+  > = [];
   const sendToRecipient = async (recipient: Recipient) => {
     const identity = normalizeMunicipality(recipient.location);
     if (!identity) return "skipped" as const;
+    try {
+      signupResults.push(await sendSignupOrdinanceDigest(recipient, reference));
+    } catch {
+      signupResults.push("unknown");
+    }
     let changesPromise = municipalityChanges.get(identity.key);
     if (!changesPromise) {
       changesPromise = (async () => {
@@ -254,13 +348,19 @@ export async function sendWeeklyOrdinanceDigests(reference = new Date()) {
         )
       : cityChanges;
     if (!changes.length) return "empty" as const;
-    if (!(await claimDelivery(recipient.userId, range.weekStart)))
+    if (!(await claimDelivery(recipient.userId, range.weekStart, "weekly")))
       return "already-processed" as const;
     try {
-      const emailId = await sendEmail({ recipient, changes, range });
+      const emailId = await sendEmail({
+        recipient,
+        changes,
+        range,
+        kind: "weekly",
+      });
       await setDeliveryStatus(
         recipient.userId,
         range.weekStart,
+        "weekly",
         "sent",
         emailId,
       );
@@ -280,6 +380,7 @@ export async function sendWeeklyOrdinanceDigests(reference = new Date()) {
       await setDeliveryStatus(
         recipient.userId,
         range.weekStart,
+        "weekly",
         deliveryStatus,
         null,
         failureCode,
@@ -313,6 +414,10 @@ export async function sendWeeklyOrdinanceDigests(reference = new Date()) {
     weekStart: range.weekStart,
     scanned: recipients.length,
     sent: 0,
+    initialSent: 0,
+    initialFailed: 0,
+    initialUnknown: 0,
+    initialSkipped: 0,
     failed: 0,
     unknown: 0,
     skipped: 0,
@@ -324,5 +429,158 @@ export async function sendWeeklyOrdinanceDigests(reference = new Date()) {
     else if (result.value === "unknown") summary.unknown += 1;
     else if (result.value === "skipped") summary.skipped += 1;
   }
+  for (const result of signupResults) {
+    if (result === "sent") summary.initialSent += 1;
+    else if (result === "failed") summary.initialFailed += 1;
+    else if (result === "unknown") summary.initialUnknown += 1;
+    else if (result === "skipped") summary.initialSkipped += 1;
+  }
   return summary;
+}
+
+export async function sendSignupOrdinanceDigest(
+  recipient: Recipient,
+  reference = new Date(),
+  force = false,
+) {
+  if (
+    !env.RESEND_API_KEY ||
+    !env.EMAIL_FROM ||
+    !env.APP_URL ||
+    !env.CRON_SECRET
+  )
+    throw new Error("Weekly email delivery is not configured.");
+
+  if (!force && (await hasPriorDelivery(recipient.userId)))
+    return "already-processed" as const;
+  const identity = normalizeMunicipality(recipient.location);
+  if (!identity) return "skipped" as const;
+  const municipality = await db.municipality.findUnique({
+    where: { key: identity.key },
+    select: { id: true, label: true },
+  });
+  if (!municipality) return "skipped" as const;
+
+  const range = trailingMonth(reference);
+  if (!(await claimDelivery(recipient.userId, range.weekStart, "signup")))
+    return "already-processed" as const;
+
+  try {
+    const cityChanges = await changesForMunicipality(municipality.id, range);
+    const changes = recipient.tags.length
+      ? cityChanges.filter((change) =>
+          change.ordinance.topics.some((topic) =>
+            recipient.tags.includes(topic),
+          ),
+        )
+      : cityChanges;
+    const emailId = await sendEmail({
+      recipient,
+      changes,
+      range,
+      kind: "signup",
+      municipalityLabel: municipality.label,
+    });
+    await setDeliveryStatus(
+      recipient.userId,
+      range.weekStart,
+      "signup",
+      "sent",
+      emailId,
+    );
+    return "sent" as const;
+  } catch (error) {
+    const statusCode =
+      error instanceof Error
+        ? Number(error.message.match(/^resend_http_(\d+)$/)?.[1])
+        : undefined;
+    const deliveryStatus =
+      statusCode !== undefined && statusCode >= 400 && statusCode < 500
+        ? "failed"
+        : "unknown";
+    const failureCode = statusCode
+      ? `resend_http_${statusCode}`
+      : "delivery_outcome_unknown";
+    await setDeliveryStatus(
+      recipient.userId,
+      range.weekStart,
+      "signup",
+      deliveryStatus,
+      null,
+      failureCode,
+    );
+    return deliveryStatus;
+  }
+}
+
+export async function sendPreferenceOrdinanceDigest(
+  recipient: Recipient,
+  profileUpdatedAt: string,
+  reference = new Date(),
+) {
+  if (
+    !env.RESEND_API_KEY ||
+    !env.EMAIL_FROM ||
+    !env.APP_URL ||
+    !env.CRON_SECRET
+  )
+    throw new Error("Weekly email delivery is not configured.");
+
+  const identity = normalizeMunicipality(recipient.location);
+  if (!identity) return "skipped" as const;
+  const municipality = await db.municipality.findUnique({
+    where: { key: identity.key },
+    select: { id: true, label: true },
+  });
+  if (!municipality) return "skipped" as const;
+
+  if (!(await claimPreferenceDelivery(recipient.userId, profileUpdatedAt)))
+    return "already-processed" as const;
+
+  const range = trailingMonth(reference);
+  try {
+    const cityChanges = await changesForMunicipality(municipality.id, range);
+    const changes = recipient.tags.length
+      ? cityChanges.filter((change) =>
+          change.ordinance.topics.some((topic) =>
+            recipient.tags.includes(topic),
+          ),
+        )
+      : cityChanges;
+    const emailId = await sendEmail({
+      recipient,
+      changes,
+      range,
+      kind: "preference",
+      municipalityLabel: municipality.label,
+      deliveryKey: profileUpdatedAt,
+    });
+    await setPreferenceDeliveryStatus(
+      recipient.userId,
+      profileUpdatedAt,
+      "sent",
+      emailId,
+    );
+    return "sent" as const;
+  } catch (error) {
+    const statusCode =
+      error instanceof Error
+        ? Number(error.message.match(/^resend_http_(\d+)$/)?.[1])
+        : undefined;
+    const deliveryStatus =
+      statusCode !== undefined && statusCode >= 400 && statusCode < 500
+        ? "failed"
+        : "unknown";
+    const failureCode = statusCode
+      ? `resend_http_${statusCode}`
+      : "delivery_outcome_unknown";
+    await setPreferenceDeliveryStatus(
+      recipient.userId,
+      profileUpdatedAt,
+      deliveryStatus,
+      null,
+      failureCode,
+    );
+    return deliveryStatus;
+  }
 }
