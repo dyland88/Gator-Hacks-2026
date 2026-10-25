@@ -33,8 +33,53 @@ Every new screen or component should match the existing system — check `design
 
 ## Stack
 
-<!-- fill in -->
-- Frontend: react, tailwindcss
-- Backend: Typescript, Next.js
-- Database: supabase
-- Hosting/deploy: vercel
+- Frontend: React 19, Next.js App Router, Tailwind CSS 4
+- Backend: TypeScript, Next.js 15, tRPC 11
+- Database: Supabase Postgres through Prisma 6
+- AI: hosted Gemma through the Google Gen AI SDK
+- Hosting/deploy: Vercel
+
+## Project layout
+
+- The application root is `gator_hacks_2026/`.
+- The main Ledgerline interface is `src/app/_components/bills-dashboard.tsx`.
+- tRPC routers live in `src/server/api/routers/` and must be registered in `src/server/api/root.ts`.
+- Server-only AI integrations live in `src/server/ai/`.
+- Environment variables are validated in `src/env.js` and documented in `.env.example`.
+
+## Gemma chat integration
+
+The Ledgerline chat is connected to hosted Gemma and uses this flow:
+
+`BillsDashboard` → `chat.send` tRPC mutation → `createChatReply` → reusable Gemma client → Gemini API
+
+- `src/server/ai/gemma.ts` owns the provider client, model selection, role conversion, timeouts, retries, and normalized text responses.
+- `src/server/chat.ts` owns chat validation and the Ledgerline system instruction. Keep product-specific prompts out of the provider client so it can also support bill summarization and tagging.
+- `src/server/api/routers/chat.ts` is the public transport layer and must return sanitized errors without provider details.
+- Chat history is browser-only and is intentionally not written to Prisma or Supabase.
+- The client may send only `user` and `model` messages. The system instruction is server-owned.
+- Requests are limited to 12 messages, 2,000 characters per user message, and 12,000 total characters.
+- Do not log chat prompts, model responses, API keys, or user profile data.
+- No live legislation retrieval is connected yet. The system instruction must not imply that current bills or statuses were looked up.
+
+Required local configuration:
+
+```env
+GEMINI_API_KEY="your-google-ai-studio-api-key"
+GEMMA_MODEL="gemma-4-26b-a4b-it"
+```
+
+`GEMMA_MODEL` is optional at runtime and defaults to `gemma-4-26b-a4b-it`. `GEMINI_API_KEY` is server-only and must never use a `NEXT_PUBLIC_` prefix.
+
+## Verification
+
+Run these from `gator_hacks_2026/` after changing the chat or AI provider:
+
+```text
+pnpm test
+pnpm typecheck
+pnpm exec eslint <changed files>
+pnpm build
+```
+
+The Gemma and chat tests use mocked provider calls and must not make live API requests in CI.
