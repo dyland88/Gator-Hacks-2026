@@ -1,5 +1,6 @@
 import {
   GoogleGenAI,
+  ThinkingLevel,
   type Content,
   type GenerateContentParameters,
   type GenerateContentResponse,
@@ -23,12 +24,17 @@ type GenerateContent = (
   parameters: GenerateContentParameters,
 ) => Promise<GenerateContentResponse>;
 
+type GenerateContentStream = (
+  parameters: GenerateContentParameters,
+) => Promise<AsyncIterable<GenerateContentResponse>>;
+
 type GemmaClientOptions = {
   apiKey: string;
   model?: string;
   timeoutMs?: number;
   retryDelayMs?: number;
   generateContent?: GenerateContent;
+  generateContentStream?: GenerateContentStream;
 };
 
 export class GemmaProviderError extends Error {
@@ -53,8 +59,68 @@ export function createGemmaClient(options: GemmaClientOptions) {
     ((parameters: GenerateContentParameters) =>
       ai!.models.generateContent(parameters));
 
+  const generateContentStream =
+    options.generateContentStream ??
+    ((parameters: GenerateContentParameters) =>
+      ai!.models.generateContentStream(parameters));
+
+  function buildParameters(input: GenerateGemmaTextInput) {
+    return {
+      model,
+      contents: input.messages.map((message): Content => ({
+        role: message.role,
+        parts: [{ text: message.content }],
+      })),
+      config: {
+        systemInstruction: input.systemInstruction,
+        temperature: input.temperature ?? 0.3,
+        maxOutputTokens: input.maxOutputTokens ?? 1_024,
+        thinkingConfig: model.startsWith("gemma-4-")
+          ? { thinkingLevel: ThinkingLevel.MINIMAL }
+          : undefined,
+        abortSignal: AbortSignal.timeout(timeoutMs),
+        httpOptions: { timeout: timeoutMs },
+      },
+    } satisfies GenerateContentParameters;
+  }
+
   return {
     model,
+    async *streamText(input: GenerateGemmaTextInput) {
+      let yielded = false;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const stream = await generateContentStream(buildParameters(input));
+          for await (const chunk of stream) {
+            const text = chunk.text;
+            if (text) {
+              yielded = true;
+              yield text;
+            }
+          }
+          if (!yielded) {
+            throw new GemmaProviderError(
+              "Gemma returned an empty response.",
+              false,
+            );
+          }
+          return;
+        } catch (error) {
+          if (error instanceof GemmaProviderError) throw error;
+
+          const retryable = isRetryableProviderError(error);
+          if (yielded || !retryable || attempt === 1) {
+            throw new GemmaProviderError(
+              "Gemma could not complete the request.",
+              retryable,
+              error,
+            );
+          }
+
+          await wait(retryDelayMs);
+        }
+      }
+    },
     async generateText(input: GenerateGemmaTextInput) {
       const contents: Content[] = input.messages.map((message) => ({
         role: message.role,
@@ -70,6 +136,9 @@ export function createGemmaClient(options: GemmaClientOptions) {
               systemInstruction: input.systemInstruction,
               temperature: input.temperature ?? 0.3,
               maxOutputTokens: input.maxOutputTokens ?? 1_024,
+              thinkingConfig: model.startsWith("gemma-4-")
+                ? { thinkingLevel: ThinkingLevel.MINIMAL }
+                : undefined,
               abortSignal: AbortSignal.timeout(timeoutMs),
               httpOptions: { timeout: timeoutMs },
             },

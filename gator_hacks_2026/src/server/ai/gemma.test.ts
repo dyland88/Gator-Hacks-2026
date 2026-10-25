@@ -73,6 +73,27 @@ describe("createGemmaClient", () => {
     expect(generateContent).toHaveBeenCalledTimes(2);
   });
 
+  it("uses minimal thinking for Gemma 4", async () => {
+    const generateContent = vi.fn(
+      async (_parameters: GenerateContentParameters) =>
+        ({ text: "A complete answer." }) as GenerateContentResponse,
+    );
+    const client = createGemmaClient({
+      apiKey: "test-key",
+      model: "gemma-4-26b-a4b-it",
+      generateContent,
+    });
+
+    await client.generateText({
+      messages: [{ role: "user", content: "Explain this bill." }],
+      systemInstruction: "Be clear.",
+    });
+
+    expect(generateContent.mock.calls[0]?.[0]).toMatchObject({
+      config: { thinkingConfig: { thinkingLevel: "MINIMAL" } },
+    });
+  });
+
   it("does not retry a permanent provider failure", async () => {
     const permanentError = Object.assign(new Error("Bad request"), {
       status: 400,
@@ -95,5 +116,30 @@ describe("createGemmaClient", () => {
       }),
     ).rejects.toMatchObject({ retryable: false });
     expect(generateContent).toHaveBeenCalledOnce();
+  });
+
+  it("streams text chunks and skips empty ones", async () => {
+    const generateContentStream = vi.fn(async () =>
+      (async function* () {
+        yield { text: "Hello " } as GenerateContentResponse;
+        yield { text: "" } as GenerateContentResponse;
+        yield { text: "there." } as GenerateContentResponse;
+      })(),
+    );
+    const client = createGemmaClient({
+      apiKey: "test-key",
+      model: "test-gemma",
+      generateContentStream,
+    });
+
+    const chunks: string[] = [];
+    for await (const chunk of client.streamText({
+      messages: [{ role: "user", content: "Hi" }],
+      systemInstruction: "Be kind.",
+    })) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toEqual(["Hello ", "there."]);
   });
 });

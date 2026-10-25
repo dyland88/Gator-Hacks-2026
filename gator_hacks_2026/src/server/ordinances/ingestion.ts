@@ -8,6 +8,7 @@ import {
   normalizeMunicipality,
   type MunicipalityIdentity,
 } from "~/lib/municipality";
+import { summaryRepeatsTitle } from "~/lib/ordinance-display";
 import { db } from "~/server/db";
 import {
   matchOrdinance,
@@ -278,7 +279,9 @@ async function persistChange(
   const snapshot = {
     sourceIdentifier: change.sourceIdentifier,
     name: change.name,
-    description: change.description,
+    description: summaryRepeatsTitle(change.name, change.description)
+      ? change.changeDescription
+      : change.description,
     stage: change.stage,
     originalStage: change.originalStage,
     topics: [...new Set(change.topics)],
