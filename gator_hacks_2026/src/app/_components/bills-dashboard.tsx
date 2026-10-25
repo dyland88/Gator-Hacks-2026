@@ -45,8 +45,6 @@ function locationLabel(place: LocationResult) {
   return place.postcode ? `${place.postcode} — ${placeName}` : placeName;
 }
 
-const sections = ["Bills", "Amendments"] as const;
-
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const signupDialogRef = useRef<HTMLDialogElement>(null);
@@ -77,8 +75,6 @@ export function BillsDashboard() {
   );
   const utils = api.useUtils();
   const saveProfileMutation = api.profile.save.useMutation();
-  const [currentSection, setCurrentSection] =
-    useState<(typeof sections)[number]>("Bills");
   const [locations, setLocations] = useState<LocationResult[]>([]);
   const [lookupStatus, setLookupStatus] = useState<
     "idle" | "loading" | "empty" | "error"
@@ -377,7 +373,7 @@ export function BillsDashboard() {
         onError(error) {
           setChatError(
             error.message ||
-              "Legal Seagull could not answer right now. Please try again.",
+            "Legal Seagull could not answer right now. Please try again.",
           );
         },
       },
@@ -424,12 +420,12 @@ export function BillsDashboard() {
       }}
     >
       <header className="bg-primary text-surface-cream flex h-16 flex-none items-center justify-between px-6 sm:px-10">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-4">
           <Image
             src="/images/seagull.png"
             alt=""
-            width={36}
-            height={36}
+            width={28}
+            height={28}
             className="shrink-0 object-contain brightness-0 invert"
             aria-hidden="true"
           />
@@ -470,55 +466,9 @@ export function BillsDashboard() {
             </p>
           )}
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="font-mono-ui text-[14px] tracking-[0.14em] uppercase">
-                Your legislative feed
-              </p>
-              <div className="relative mt-3 inline-flex items-center gap-3 rounded-lg focus-within:outline-2 focus-within:outline-offset-4">
-                <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
-                  <span
-                    key={currentSection}
-                    className="section-switch-blink inline-block"
-                  >
-                    {currentSection} for you
-                  </span>
-                </h1>
-                <svg
-                  width="20"
-                  height="14"
-                  viewBox="0 0 20 14"
-                  fill="none"
-                  aria-hidden="true"
-                  className="shrink-0"
-                >
-                  <path
-                    d="m4 4 6 6 6-6"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <select
-                  aria-label="Choose feed type"
-                  value={currentSection}
-                  onChange={(event) =>
-                    setCurrentSection(
-                      event.target.value === "Amendments"
-                        ? "Amendments"
-                        : "Bills",
-                    )
-                  }
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                >
-                  {sections.map((section) => (
-                    <option key={section} value={section}>
-                      {section}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
+              Legislation for you
+            </h1>
             <button
               type="button"
               onClick={openDetails}
@@ -566,7 +516,7 @@ export function BillsDashboard() {
             interests={profile.interests}
             age={profile.age ? Number(profile.age) : null}
             lifeCircumstances={profile.lifeCircumstances}
-            section={currentSection}
+            section="Bills"
           />
         </main>
 
@@ -582,8 +532,8 @@ export function BillsDashboard() {
               <Image
                 src="/images/seagull.png"
                 alt=""
-                width={30}
-                height={30}
+                width={25}
+                height={25}
                 className="object-contain brightness-0 invert"
               />
             </div>
@@ -765,8 +715,8 @@ export function BillsDashboard() {
                           ...current,
                           interests: current.interests.includes(interest)
                             ? current.interests.filter(
-                                (item) => item !== interest,
-                              )
+                              (item) => item !== interest,
+                            )
                             : [...current.interests, interest],
                         }))
                       }
@@ -911,10 +861,9 @@ export function BillsDashboard() {
               id="circumstances-help"
               className="text-primary/70 mt-2 text-[14px] leading-5"
             >
-              Choose any that apply. Bills that explicitly affect people in your
-              situation move to the top of your feed. Nothing is hidden, and
-              matches do not determine eligibility. Clear any choice to stop
-              using it. These details are not sent to AI services.
+              This information is used to improve the relevance
+              of the legislation presented to you. This will not exclude results from
+              your feed.
             </p>
             {lifeCircumstanceQuery.isError ? (
               <p role="alert" className="mt-3 text-[14px]">

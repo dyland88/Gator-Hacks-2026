@@ -177,8 +177,8 @@ export function OrdinanceFeed({
     chosenLocation ??
     (profileLocation.trim()
       ? (locations.data?.find(
-          (location) => location.key === profileIdentity?.key,
-        )?.id ?? "")
+        (location) => location.key === profileIdentity?.key,
+      )?.id ?? "")
       : (locations.data?.[0]?.id ?? ""));
   const topics =
     chosenTopics ??
@@ -205,8 +205,8 @@ export function OrdinanceFeed({
       topics.includes(topic)
         ? topics.filter((value) => value !== topic)
         : interestOptions.filter(
-            (value) => value === topic || topics.includes(value),
-          ),
+          (value) => value === topic || topics.includes(value),
+        ),
     );
   }
 
@@ -315,7 +315,7 @@ export function OrdinanceFeed({
           title="Choose a city to explore."
           description={
             profileIdentity
-              ? "There are no stored ordinances for your saved location yet. Choose another available city above."
+              ? "There are no stored ordinances for your saved location yet."
               : "Select a location above to see its local ordinances."
           }
         />
