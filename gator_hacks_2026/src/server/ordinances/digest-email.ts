@@ -117,7 +117,42 @@ async function changesForMunicipality(
     cursor = page.nextCursor;
     if (!cursor) break;
   }
-  return changes;
+  const activityPriority: Record<DigestChange["activityType"], number> = {
+    introduction: 0,
+    hearing: 1,
+    amendment: 2,
+    vote: 3,
+    adoption: 4,
+    rejection: 4,
+    withdrawal: 4,
+    repeal: 5,
+    effective_date_change: 6,
+    effective: 7,
+  };
+  const compareRecency = (left: DigestChange, right: DigestChange) => {
+    const dateComparison = left.activityDate.localeCompare(right.activityDate);
+    if (dateComparison !== 0) return dateComparison;
+    if (left.activityAt && right.activityAt) {
+      const timeComparison =
+        left.activityAt.getTime() - right.activityAt.getTime();
+      if (timeComparison !== 0) return timeComparison;
+    }
+    const activityComparison =
+      activityPriority[left.activityType] - activityPriority[right.activityType];
+    if (activityComparison !== 0) return activityComparison;
+    const discoveredComparison =
+      left.discoveredAt.getTime() - right.discoveredAt.getTime();
+    return discoveredComparison || left.id.localeCompare(right.id);
+  };
+  const latestByOrdinance = new Map<string, DigestChange>();
+  for (const change of changes) {
+    const current = latestByOrdinance.get(change.ordinanceId);
+    if (!current || compareRecency(change, current) > 0)
+      latestByOrdinance.set(change.ordinanceId, change);
+  }
+  return [...latestByOrdinance.values()].sort((left, right) =>
+    compareRecency(right, left),
+  );
 }
 
 function emailMarkup(
