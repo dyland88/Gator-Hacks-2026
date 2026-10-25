@@ -4,7 +4,11 @@ allowBuilds:
   prisma: true
   unrs-resolver: true
 permissions:
+  '@google/genai':
+    build: true
   '@trpc/client':
     skills: true
   '@trpc/server':
     skills: true
+  protobufjs:
+    build: true
