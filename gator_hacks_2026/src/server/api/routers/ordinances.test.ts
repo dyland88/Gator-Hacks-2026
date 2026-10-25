@@ -293,3 +293,92 @@ describe("DBA city ingestion authorization", () => {
     expect(submitCityIngestion).not.toHaveBeenCalled();
   });
 });
+
+describe("personalized feed ordering", () => {
+  const renterRule = {
+    ageMin: null,
+    ageMax: null,
+    lifeCircumstances: ["Renter"],
+    evidenceExcerpt: "Protects renters.",
+  };
+  const studentRule = { ...renterRule, lifeCircumstances: ["Student"] };
+  const rows = [
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      latestActivity: "2026-10-24",
+      relevanceRules: [],
+    },
+    {
+      id: "22222222-2222-4222-8222-222222222222",
+      latestActivity: "2026-10-20",
+      relevanceRules: [renterRule],
+    },
+    {
+      id: "33333333-3333-4333-8333-333333333333",
+      latestActivity: "2026-10-23",
+      relevanceRules: [studentRule],
+    },
+  ];
+
+  function feedCaller(findMany: ReturnType<typeof vi.fn>) {
+    const ctx = {
+      db: { ordinance: { findMany } },
+      headers: new Headers(),
+      user: null,
+      supabase: null,
+    };
+    return ordinancesRouter.createCaller(
+      ctx as unknown as Awaited<ReturnType<typeof createTRPCContext>>,
+    );
+  }
+
+  it("moves bills that explicitly affect the saved circumstances to the top across pages", async () => {
+    const caller = feedCaller(vi.fn().mockResolvedValue(rows));
+    const first = await caller.feed({
+      municipalityId: cityId,
+      lifeCircumstances: ["Renter"],
+      limit: 2,
+    });
+    expect(first.items.map((item) => item.id)).toEqual([
+      rows[1]!.id,
+      rows[0]!.id,
+    ]);
+    expect(first.nextCursor).toBe(rows[0]!.id);
+    expect(first.items[0]).not.toHaveProperty("relevanceRules");
+    const second = await caller.feed({
+      municipalityId: cityId,
+      lifeCircumstances: ["Renter"],
+      limit: 2,
+      cursor: first.nextCursor,
+    });
+    expect(second.items.map((item) => item.id)).toEqual([rows[2]!.id]);
+    expect(second.nextCursor).toBeUndefined();
+  });
+
+  it("keeps recency order and database pagination without a relevance profile", async () => {
+    const findMany = vi.fn().mockResolvedValue(rows.slice(0, 2));
+    const caller = feedCaller(findMany);
+    const page = await caller.feed({ municipalityId: cityId, limit: 1 });
+    expect(page.items.map((item) => item.id)).toEqual([rows[0]!.id]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 2,
+        orderBy: [{ latestActivity: "desc" }, { id: "desc" }],
+      }),
+    );
+    expect(findMany.mock.calls[0]![0]).not.toHaveProperty(
+      "select.relevanceRules",
+    );
+  });
+
+  it("returns nothing for a cursor that is not in the ranked feed", async () => {
+    const caller = feedCaller(vi.fn().mockResolvedValue(rows));
+    await expect(
+      caller.feed({
+        municipalityId: cityId,
+        lifeCircumstances: ["Renter"],
+        cursor: "44444444-4444-4444-8444-444444444444",
+      }),
+    ).resolves.toEqual({ items: [], nextCursor: undefined });
+  });
+});

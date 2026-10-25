@@ -30,6 +30,7 @@ import {
   withinWindow,
   type ExtractedChange,
 } from "./schema";
+import { loadLifeCircumstances } from "./life-circumstances";
 import { presentableLink } from "./source-links";
 
 export { withinWindow } from "./schema";
@@ -143,6 +144,7 @@ async function submitRun(
   database: PrismaClient,
 ) {
   const window = { windowStart: input.windowStart, windowEnd: input.windowEnd };
+  const lifeCircumstances = await loadLifeCircumstances(database);
   const cities = [];
   for (const city of input.identities.sort((a, b) =>
     a.key.localeCompare(b.key),
@@ -180,8 +182,13 @@ async function submitRun(
     };
   try {
     const jobId = input.webhook
-      ? await startAgent({ ...window, runId: run.id, cities })
-      : await startPreviewAgent({ ...window, cities });
+      ? await startAgent({
+          ...window,
+          runId: run.id,
+          cities,
+          lifeCircumstances,
+        })
+      : await startPreviewAgent({ ...window, cities, lifeCircumstances });
     await database.ingestionRun.updateMany({
       where: { id: run.id, status: "submitting", providerJobId: null },
       data: { providerJobId: jobId, status: "processing" },
@@ -377,6 +384,9 @@ export async function completeIngestion(
       }
       const cities = snapshotSchema.parse(run.cities);
       const expected = new Set(cities.map((city) => city.key));
+      const circumstanceKeys = new Set(
+        (await loadLifeCircumstances(tx)).map((option) => option.key),
+      );
       const results = new Map<string, z.infer<typeof cityResultSchema>>();
       const duplicates = new Set<string>();
       let rejectedCount = 0;
@@ -423,7 +433,12 @@ export async function completeIngestion(
             rejected++;
             continue;
           }
-          accepted.push(change.data);
+          accepted.push({
+            ...change.data,
+            relevanceRules: change.data.relevanceRules?.filter((rule) =>
+              rule.lifeCircumstances.every((key) => circumstanceKeys.has(key)),
+            ),
+          });
         }
         accepted.sort((a, b) =>
           (a.activityAt ?? a.activityDate).localeCompare(

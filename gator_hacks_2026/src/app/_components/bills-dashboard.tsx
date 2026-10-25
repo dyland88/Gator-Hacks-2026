@@ -9,7 +9,6 @@ import {
   guestProfileSchema,
   storedProfileInputSchema,
   interestOptions,
-  lifeCircumstanceOptions,
   profileInputSchema,
 } from "~/lib/profile";
 import { supabase } from "~/lib/supabase-client";
@@ -68,6 +67,14 @@ export function BillsDashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const lifeCircumstanceQuery = api.ordinances.lifeCircumstances.useQuery(
+    undefined,
+    { staleTime: 300_000 },
+  );
+  const lifeCircumstanceOptions = lifeCircumstanceQuery.data ?? [];
+  const knownLifeCircumstances = new Set(
+    lifeCircumstanceOptions.map((option) => option.key),
+  );
   const utils = api.useUtils();
   const saveProfileMutation = api.profile.save.useMutation();
   const [currentSection, setCurrentSection] =
@@ -309,7 +316,9 @@ export function BillsDashboard() {
     setProfileError(null);
     const result = profileInputSchema.safeParse({
       tags: draft.interests,
-      lifeCircumstances: draft.lifeCircumstances,
+      lifeCircumstances: draft.lifeCircumstances.filter((value) =>
+        knownLifeCircumstances.has(value),
+      ),
       age: draft.age ? Number(draft.age) : null,
       location: draft.location || null,
       locationId: draft.locationId === null ? null : String(draft.locationId),
@@ -733,7 +742,7 @@ export function BillsDashboard() {
               ? "Your choices are saved to your account."
               : "Your choices are saved on this device. Sign in to save them to your account."}{" "}
             Your location and topics filter the feed. Optional age and life
-            circumstances highlight source-supported relevance.
+            circumstances move bills that explicitly affect you to the top.
           </p>
           <div className="mt-7 grid gap-5">
             <fieldset>
@@ -902,35 +911,47 @@ export function BillsDashboard() {
               id="circumstances-help"
               className="text-primary/70 mt-2 text-[14px] leading-5"
             >
-              Choose any that apply. Your age and these choices highlight bills
-              that explicitly affect people in your situation. They do not
-              determine eligibility or hide other bills. Clear any choice to
-              stop using it. These details are not sent to AI services.
+              Choose any that apply. Bills that explicitly affect people in your
+              situation move to the top of your feed. Nothing is hidden, and
+              matches do not determine eligibility. Clear any choice to stop
+              using it. These details are not sent to AI services.
             </p>
+            {lifeCircumstanceQuery.isError ? (
+              <p role="alert" className="mt-3 text-[14px]">
+                Life circumstances could not be loaded. Refresh the page to try
+                again.
+              </p>
+            ) : lifeCircumstanceQuery.isPending ? (
+              <p role="status" className="mt-3 text-[14px]">
+                Loading life circumstances…
+              </p>
+            ) : lifeCircumstanceOptions.length === 0 ? (
+              <p role="status" className="mt-3 text-[14px]">
+                No life circumstances are available yet.
+              </p>
+            ) : null}
             <div
               className="mt-3 flex flex-wrap gap-2"
               aria-describedby="circumstances-help"
             >
-              {lifeCircumstanceOptions.map((value) => (
+              {lifeCircumstanceOptions.map(({ key, label }) => (
                 <button
-                  key={value}
+                  key={key}
                   type="button"
-                  aria-pressed={draft.lifeCircumstances.includes(value)}
+                  aria-pressed={draft.lifeCircumstances.includes(key)}
                   onClick={() =>
                     setDraft((current) => ({
                       ...current,
-                      lifeCircumstances: current.lifeCircumstances.includes(
-                        value,
-                      )
+                      lifeCircumstances: current.lifeCircumstances.includes(key)
                         ? current.lifeCircumstances.filter(
-                            (item) => item !== value,
+                            (item) => item !== key,
                           )
-                        : [...current.lifeCircumstances, value],
+                        : [...current.lifeCircumstances, key],
                     }))
                   }
-                  className={`cursor-pointer rounded-full border px-3 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(value) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
+                  className={`cursor-pointer rounded-full border px-3 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(key) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
                 >
-                  {value}
+                  {label}
                 </button>
               ))}
             </div>

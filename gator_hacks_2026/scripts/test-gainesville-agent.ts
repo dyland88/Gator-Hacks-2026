@@ -11,6 +11,7 @@ import {
   getAgentStatus,
   startPreviewAgent,
 } from "~/server/ordinances/firecrawl";
+import { loadLifeCircumstances } from "~/server/ordinances/life-circumstances";
 import {
   completeIngestion,
   submitPollingIngestion,
@@ -114,7 +115,8 @@ async function main() {
   const city = normalizeMunicipality("Gainesville, Florida, United States")!;
   const windowEnd = new Date();
   const windowStart = new Date(windowEnd.getTime() - 30 * 86_400_000);
-  const input = { cities: [city], windowStart, windowEnd };
+  const lifeCircumstances = await loadLifeCircumstances();
+  const input = { cities: [city], windowStart, windowEnd, lifeCircumstances };
   if (mode === "--dry-run") {
     console.log(buildAgentPrompt(input));
     console.log(

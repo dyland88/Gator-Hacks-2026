@@ -36,6 +36,9 @@ const city = {
   id: "ccf48957-3c42-462b-9ecf-95ad836e5da1",
 };
 const jobId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
+const circumstances = [
+  { key: "Renter", label: "Renter", description: "Rents a home." },
+];
 const now = new Date("2026-10-24T06:35:00Z");
 const change = {
   sourceIdentifier: "2026-01",
@@ -73,6 +76,9 @@ function database() {
   const changes = new Set<string>();
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([{ id: city.id }]),
+    lifeCircumstance: {
+      findMany: vi.fn().mockResolvedValue(circumstances),
+    },
     userProfile: {
       findMany: vi.fn().mockResolvedValue([
         {
@@ -221,6 +227,7 @@ describe("manual database ingestion", () => {
       cities: [city],
       windowStart,
       windowEnd: now,
+      lifeCircumstances: circumstances,
     });
     expect(startAgent).not.toHaveBeenCalled();
     expect(tx.ingestionRun.createMany.mock.invocationCallOrder[0]).toBeLessThan(
@@ -283,6 +290,7 @@ describe("manual database ingestion", () => {
       windowStart,
       windowEnd: now,
       runId: run.id,
+      lifeCircumstances: circumstances,
     });
     expect(startPreviewAgent).not.toHaveBeenCalled();
     expect(submitted.providerJobId).toBe(jobId);
@@ -445,6 +453,39 @@ describe("result persistence", () => {
     expect(tx.ordinance.upsert.mock.calls[0]?.[0]).toMatchObject({
       create: {
         relevanceRules: [{ ...rule, evidenceUrl: change.evidenceUrl }],
+      },
+    });
+  });
+
+  it("drops relevance rules that name life circumstances missing from the database", async () => {
+    const { db, tx } = database();
+    const supported = {
+      ageMin: null,
+      ageMax: null,
+      lifeCircumstances: ["Renter"],
+      evidenceExcerpt: "Renters must register.",
+    };
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([
+          {
+            ...change,
+            evidenceExcerpt: `${change.evidenceExcerpt} ${supported.evidenceExcerpt}`,
+            relevanceRules: [
+              supported,
+              { ...supported, lifeCircumstances: ["Renter", "Invented"] },
+            ],
+          },
+        ]),
+      },
+      db,
+    );
+    expect(tx.lifeCircumstance.findMany).toHaveBeenCalled();
+    expect(tx.ordinance.upsert.mock.calls[0]?.[0]).toMatchObject({
+      create: {
+        relevanceRules: [{ ...supported, evidenceUrl: change.evidenceUrl }],
       },
     });
   });

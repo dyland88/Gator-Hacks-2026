@@ -1,14 +1,17 @@
 import { TRPCError } from "@trpc/server";
+import { type Prisma } from "../../../../generated/prisma";
 import { z } from "zod";
 
 import { normalizeMunicipality } from "~/lib/municipality";
 import { interestOptions } from "~/lib/profile";
+import { matchRelevance } from "~/lib/relevance";
 import {
   createTRPCRouter,
   dbaProcedure,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { loadLifeCircumstances } from "~/server/ordinances/life-circumstances";
 import { submitCityIngestion } from "~/server/ordinances/ingestion";
 import { queryOrdinanceChanges } from "~/server/ordinances/queries";
 import { queryInput } from "~/server/ordinances/schema";
@@ -55,6 +58,16 @@ export const ordinancesRouter = createTRPCRouter({
       });
     }
   }),
+  lifeCircumstances: publicProcedure.query(async ({ ctx }) => {
+    try {
+      return await loadLifeCircumstances(ctx.db);
+    } catch {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Life circumstances could not be loaded.",
+      });
+    }
+  }),
   feed: publicProcedure
     .input(
       z
@@ -65,6 +78,11 @@ export const ordinancesRouter = createTRPCRouter({
             .max(interestOptions.length)
             .default([]),
           section: z.enum(["bills", "amendments"]).default("bills"),
+          age: z.number().int().min(1).max(120).nullable().default(null),
+          lifeCircumstances: z
+            .array(z.string().trim().min(1).max(100))
+            .max(20)
+            .default([]),
           limit: z.number().int().min(1).max(50).default(12),
           cursor: z.string().uuid().optional(),
           direction: z.literal("forward").optional(),
@@ -73,57 +91,91 @@ export const ordinancesRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       try {
-        const rows = await ctx.db.ordinance.findMany({
-          where: {
-            municipalityId: input.municipalityId,
-            topics: input.topics.length
-              ? { hasSome: [...new Set(input.topics)] }
+        const where = {
+          municipalityId: input.municipalityId,
+          topics: input.topics.length
+            ? { hasSome: [...new Set(input.topics)] }
+            : undefined,
+          changes:
+            input.section === "amendments"
+              ? { some: { activityType: "amendment" } }
               : undefined,
-            changes:
+        };
+        const select = {
+          id: true,
+          sourceIdentifier: true,
+          name: true,
+          description: true,
+          stage: true,
+          originalStage: true,
+          topics: true,
+          sourceUrl: true,
+          latestActivity: true,
+          adoptedDate: true,
+          effectiveDate: true,
+          municipality: {
+            select: { id: true, city: true, state: true, label: true },
+          },
+          changes: {
+            where:
               input.section === "amendments"
-                ? { some: { activityType: "amendment" } }
+                ? { activityType: "amendment" }
                 : undefined,
-          },
-          select: {
-            id: true,
-            sourceIdentifier: true,
-            name: true,
-            description: true,
-            stage: true,
-            originalStage: true,
-            topics: true,
-            relevanceRules: true,
-            sourceUrl: true,
-            latestActivity: true,
-            adoptedDate: true,
-            effectiveDate: true,
-            municipality: {
-              select: { id: true, city: true, state: true, label: true },
+            select: {
+              activityDate: true,
+              activityType: true,
+              description: true,
+              evidenceUrl: true,
             },
-            changes: {
-              where:
-                input.section === "amendments"
-                  ? { activityType: "amendment" }
-                  : undefined,
-              select: {
-                activityDate: true,
-                activityType: true,
-                description: true,
-                evidenceUrl: true,
-              },
-              orderBy: [{ activityDate: "desc" }, { id: "desc" }],
-              take: 1,
-            },
+            orderBy: [{ activityDate: "desc" }, { id: "desc" }],
+            take: 1,
           },
+        } satisfies Prisma.OrdinanceSelect;
+        const personalized =
+          input.age !== null || input.lifeCircumstances.length > 0;
+        if (!personalized) {
+          const rows = await ctx.db.ordinance.findMany({
+            where,
+            select,
+            orderBy: [{ latestActivity: "desc" }, { id: "desc" }],
+            take: input.limit + 1,
+            cursor: input.cursor ? { id: input.cursor } : undefined,
+            skip: input.cursor ? 1 : undefined,
+          });
+          const items = rows.slice(0, input.limit);
+          return {
+            items,
+            nextCursor:
+              rows.length > input.limit ? items.at(-1)?.id : undefined,
+          };
+        }
+        const rows = await ctx.db.ordinance.findMany({
+          where,
+          select: { ...select, relevanceRules: true },
           orderBy: [{ latestActivity: "desc" }, { id: "desc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
         });
-        const items = rows.slice(0, input.limit);
+        const ranked = rows
+          .map(({ relevanceRules, ...row }) => ({
+            row,
+            score: matchRelevance(relevanceRules, {
+              age: input.age,
+              lifeCircumstances: input.lifeCircumstances,
+            }).length,
+          }))
+          .sort((a, b) => b.score - a.score);
+        const cursorIndex = input.cursor
+          ? ranked.findIndex(({ row }) => row.id === input.cursor)
+          : -1;
+        if (input.cursor && cursorIndex < 0)
+          return { items: [], nextCursor: undefined };
+        const page = ranked.slice(
+          cursorIndex + 1,
+          cursorIndex + 1 + input.limit + 1,
+        );
+        const items = page.slice(0, input.limit).map(({ row }) => row);
         return {
           items,
-          nextCursor: rows.length > input.limit ? items.at(-1)?.id : undefined,
+          nextCursor: page.length > input.limit ? items.at(-1)?.id : undefined,
         };
       } catch {
         throw new TRPCError({

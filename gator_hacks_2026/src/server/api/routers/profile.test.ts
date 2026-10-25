@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
 vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/lib/supabase-server", () => ({
   createServerSupabaseClient: vi.fn(),
@@ -31,7 +32,14 @@ function setup(user: boolean) {
     single: vi.fn().mockResolvedValue(result),
   };
   const context = {
-    db: {},
+    db: {
+      lifeCircumstance: {
+        findMany: vi.fn().mockResolvedValue([
+          { key: "Renter", label: "Renter", description: "Rents a home." },
+          { key: "Student", label: "Student", description: "Studies." },
+        ]),
+      },
+    },
     headers: new Headers(),
     user: user ? { id: userId } : null,
     supabase: { from: vi.fn().mockReturnValue(chain) },
@@ -127,7 +135,7 @@ describe("profile authorization", () => {
     );
     chain.upsert.mockClear();
     await expect(
-      caller.save({ ...input, lifeCircumstances: ["Invented"] } as never),
+      caller.save({ ...input, lifeCircumstances: ["Invented"] }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(chain.upsert).not.toHaveBeenCalled();
   });

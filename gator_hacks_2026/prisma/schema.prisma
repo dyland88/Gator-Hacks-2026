@@ -110,3 +110,13 @@ model OrdinanceChange {
   @@index([activityDate, id])
   @@map("ordinance_changes")
 }
+
+model LifeCircumstance {
+  key         String  @id
+  label       String
+  description String
+  sortOrder   Int     @default(0)
+  active      Boolean @default(true)
+
+  @@map("life_circumstances")
+}

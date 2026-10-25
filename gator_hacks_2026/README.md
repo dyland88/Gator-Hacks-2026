@@ -89,6 +89,14 @@ Both paths submit one webhook-backed Agent job for that city's window ending at 
 
 For local testing, expose the dev server through an HTTPS tunnel and set `APP_URL` to that tunnel's origin before starting a job. Invoke cron routes with the bearer secret from a local HTTP client; never place secrets in query strings. A real manual submission consumes the daily claim and may use credits. Automated tests mock all Firecrawl calls and sign fixture webhooks locally, so they consume no credits.
 
+### Life circumstances
+
+The eleven life circumstances are rows in `life_circumstances`, not code constants. Each row has a stable `key` (the value saved on profiles), a display `label`, and a `description` that the crawler uses when tagging bills. Rows are seeded by `prisma/sql/ordinances.sql` with `ON CONFLICT DO NOTHING`, so re-running `pnpm db:ordinances` never overwrites edits. Set `active = false` to retire one: it disappears from the preferences modal and from the crawler prompt, while existing tags remain stored.
+
+The crawler tags each affected bill internally through `relevanceRules`. A rule names one group, and every circumstance in that rule must apply together. Alternative groups are separate rules. Tags are never shown in the feed. Results that name a missing or inactive key are dropped before storage. Descriptions are sent to the agent on each new run, so editing one changes future tagging but not stored bills.
+
+Preferences save only keys that exist in the table. `ordinances.feed` accepts optional `age` and `lifeCircumstances`. When either is present, the server ranks the full filtered feed by the number of matching rules, then by latest activity, and paginates that ranking with the same UUID cursor. Without them, the feed keeps database pagination by latest activity. Matching is still advisory and does not determine eligibility.
+
 ### Query interfaces and coverage limits
 
 The website uses public `ordinances.locations` and `ordinances.feed` queries to browse public legislation. Locations list cities with stored ordinances; feed queries require an explicit municipality UUID, optionally filter by the shared eight-topic taxonomy, and paginate with a cursor. Multiple selected topics match any of them. The amendments view includes ordinances with recorded amendment activity. Saved profile location and interests initialize the controls; visitors without a saved location see the first available city. Account profiles and their ownership checks remain private.
