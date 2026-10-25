@@ -27,13 +27,6 @@ export const interestDescriptions: Record<
   "Civil rights": "Equal treatment, accessibility, voting, and civil liberties",
 };
 
-export const genderOptions = [
-  "Woman",
-  "Man",
-  "Non-binary",
-  "Prefer not to say",
-] as const;
-
 export const lifeCircumstanceOptions = [
   "Student",
   "Renter",
@@ -63,11 +56,25 @@ export const profileInputSchema = z
     lifeCircumstances: lifeCircumstancesSchema.default([]),
     location: z.string().trim().max(300).nullable(),
     locationId: z.string().trim().max(100).nullable(),
-    gender: z.enum(genderOptions).nullable(),
   })
   .strict();
 
 export type ProfileInput = z.infer<typeof profileInputSchema>;
+
+export const storedProfileInputSchema = profileInputSchema.strip();
+
+export const guestProfileSchema = z.object({
+  location: z.string().default(""),
+  locationId: z.union([z.string(), z.number()]).nullable().default(null),
+  age: z.string().default(""),
+  interests: z.array(z.string()).default([]),
+  lifeCircumstances: z
+    .array(z.string())
+    .default([])
+    .transform((values) =>
+      lifeCircumstanceOptions.filter((value) => values.includes(value)),
+    ),
+});
 
 export type StoredProfile = {
   id: string;
@@ -76,7 +83,6 @@ export type StoredProfile = {
   life_circumstances: string[];
   location: string | null;
   location_id: string | null;
-  gender: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -93,7 +99,6 @@ export type Database = {
           life_circumstances?: string[];
           location?: string | null;
           location_id?: string | null;
-          gender?: string | null;
         };
         Update: Partial<Omit<StoredProfile, "created_at" | "updated_at">>;
         Relationships: [];

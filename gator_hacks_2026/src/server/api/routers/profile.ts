@@ -3,11 +3,14 @@ import { TRPCError } from "@trpc/server";
 import { profileInputSchema } from "~/lib/profile";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
+const profileFields =
+  "id,tags,age,life_circumstances,location,location_id,created_at,updated_at";
+
 export const profileRouter = createTRPCRouter({
   me: protectedProcedure.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
       .from("user_profiles")
-      .select("*")
+      .select(profileFields)
       .eq("id", ctx.user.id)
       .maybeSingle();
     if (error)
@@ -30,11 +33,10 @@ export const profileRouter = createTRPCRouter({
             life_circumstances: input.lifeCircumstances,
             location: input.location === "" ? null : input.location,
             location_id: input.locationId === "" ? null : input.locationId,
-            gender: input.gender,
           },
           { onConflict: "id" },
         )
-        .select("*")
+        .select(profileFields)
         .single();
       if (error)
         throw new TRPCError({

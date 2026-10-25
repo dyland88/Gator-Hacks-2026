@@ -8,6 +8,7 @@ vi.mock("~/lib/supabase-server", () => ({
 import { profileRouter } from "./profile";
 import { createTRPCContext } from "../trpc";
 import { createServerSupabaseClient } from "~/lib/supabase-server";
+import { guestProfileSchema, storedProfileInputSchema } from "~/lib/profile";
 
 const userId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
 const saved = {
@@ -16,7 +17,6 @@ const saved = {
   age: 27,
   location: "Gainesville",
   location_id: "us:32601:0",
-  gender: "Woman",
   created_at: "2026-10-24",
   updated_at: "2026-10-24",
 };
@@ -43,6 +43,19 @@ function setup(user: boolean) {
 }
 
 describe("profile authorization", () => {
+  it("rejects the removed demographic field instead of persisting it", async () => {
+    const { caller, chain } = setup(true);
+    await expect(
+      caller.save({
+        tags: [],
+        age: null,
+        location: null,
+        locationId: null,
+        gender: "Woman",
+      } as never),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(chain.upsert).not.toHaveBeenCalled();
+  });
   it("rejects unsigned profile reads and writes", async () => {
     const { caller, context } = setup(false);
     await expect(caller.me()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
@@ -52,7 +65,6 @@ describe("profile authorization", () => {
         age: null,
         location: null,
         locationId: null,
-        gender: null,
       }),
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     expect(context.supabase.from).not.toHaveBeenCalled();
@@ -72,7 +84,6 @@ describe("profile authorization", () => {
       age: 27,
       location: "Gainesville",
       locationId: "us:32601:0",
-      gender: "Woman",
     });
     expect(chain.upsert).toHaveBeenCalledWith(
       {
@@ -82,7 +93,6 @@ describe("profile authorization", () => {
         age: 27,
         location: "Gainesville",
         location_id: "us:32601:0",
-        gender: "Woman",
       },
       { onConflict: "id" },
     );
@@ -97,7 +107,6 @@ describe("profile authorization", () => {
         age: null,
         location: null,
         locationId: null,
-        gender: null,
       } as never),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(chain.upsert).not.toHaveBeenCalled();
@@ -110,7 +119,6 @@ describe("profile authorization", () => {
       age: null,
       location: null,
       locationId: null,
-      gender: null,
     };
     await caller.save({ ...input, lifeCircumstances: [] });
     expect(chain.upsert).toHaveBeenCalledWith(
@@ -132,7 +140,6 @@ describe("profile authorization", () => {
         age: 121,
         location: null,
         locationId: null,
-        gender: null,
       } as never),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(chain.upsert).not.toHaveBeenCalled();
@@ -147,6 +154,42 @@ describe("profile authorization", () => {
     await expect(caller.me()).rejects.toThrow(
       "Your preferences could not be loaded. Please try again.",
     );
+  });
+});
+
+describe("stored preference cleanup", () => {
+  it("removes retired fields from guest preferences while retaining current preferences", () => {
+    const cleaned = guestProfileSchema.parse({
+      location: "Gainesville, Florida, United States",
+      locationId: "123",
+      age: "27",
+      interests: ["Housing"],
+      lifeCircumstances: ["Renter"],
+      gender: "Woman",
+    });
+    expect(cleaned).toEqual({
+      location: "Gainesville, Florida, United States",
+      locationId: "123",
+      age: "27",
+      interests: ["Housing"],
+      lifeCircumstances: ["Renter"],
+    });
+  });
+  it("preserves pending signup preferences without forwarding retired fields to the API", () => {
+    const cleaned = storedProfileInputSchema.parse({
+      tags: ["Housing"],
+      age: 27,
+      location: "Gainesville",
+      locationId: "123",
+      gender: "Woman",
+    });
+    expect(cleaned).toEqual({
+      tags: ["Housing"],
+      age: 27,
+      location: "Gainesville",
+      locationId: "123",
+      lifeCircumstances: [],
+    });
   });
 });
 

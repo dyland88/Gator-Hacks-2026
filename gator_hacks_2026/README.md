@@ -58,7 +58,7 @@ Set the Vercel project Root Directory to `gator_hacks_2026` so its `vercel.json`
 
 Vercel sends `Authorization: Bearer <CRON_SECRET>`. Both routes reject unauthenticated requests and disable caching. Hobby schedules can arrive within the scheduled hour, so the reporting window is fixed at 06:00 UTC rather than invocation time. [Vercel cron behavior](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
 
-For example, the October 24 run asks about `[2026-10-23T06:00:00Z, 2026-10-24T06:00:00Z)`. The first deployment does not backfill earlier history. The profile's city/state/country label is normalized, removing ZIP prefixes and combining ZIP/city search IDs. Only recognized U.S. states and Washington, DC are eligible; missing IDs, ambiguous labels, territories, and non-U.S. labels are skipped and counted. No age, gender, interests, account IDs, or email addresses are sent to Firecrawl.
+For example, the October 24 run asks about `[2026-10-23T06:00:00Z, 2026-10-24T06:00:00Z)`. The first deployment does not backfill earlier history. The profile's city/state/country label is normalized, removing ZIP prefixes and combining ZIP/city search IDs. Only recognized U.S. states and Washington, DC are eligible; missing IDs, ambiguous labels, territories, and non-U.S. labels are skipped and counted. No age, life circumstances, interests, account IDs, or email addresses are sent to Firecrawl.
 
 ### Completion and recovery
 
@@ -145,7 +145,7 @@ pnpm db:profiles
 pnpm exec prisma generate
 ```
 
-The SQL is safe to rerun. It creates `public.user_profiles`, an `auth.users` foreign key with cascading deletion, validation checks, owner-only RLS policies, timestamps, and a signup trigger. Existing auth users receive an empty profile. Supabase Auth owns emails and passwords; `user_profiles` stores tags, age, location, location ID, and gender. Use `db:profiles` to provision these database objects; `prisma db push` alone does not preserve the complete auth integration.
+The SQL is safe to rerun. It creates `public.user_profiles`, an `auth.users` foreign key with cascading deletion, validation checks, owner-only RLS policies, timestamps, and a signup trigger. Existing auth users receive an empty profile. Supabase Auth owns emails and passwords; `user_profiles` stores tags, optional age, life circumstances, location, and location ID. Use `db:profiles` to provision these database objects; `prisma db push` alone does not preserve the complete auth integration.
 
 Accounts support email/password signup, sign-in, sign-out, email confirmation, password recovery, and cookie-based sessions. Signed-in preferences are loaded and saved through authenticated tRPC procedures using the user's Supabase session and RLS. Guest preferences stay on the device. Preferences selected before signup are transferred on the first sign-in on that device, without overwriting an existing populated account profile.
 

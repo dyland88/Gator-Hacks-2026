@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   age integer CHECK (age BETWEEN 1 AND 120),
   location text CHECK (char_length(location) <= 300),
   location_id text CHECK (char_length(location_id) <= 100),
-  gender text CHECK (gender IN ('Woman', 'Man', 'Non-binary', 'Prefer not to say')),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT user_profiles_tags_check CHECK (
@@ -15,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   )
 );
 
+ALTER TABLE public.user_profiles DROP COLUMN IF EXISTS gender;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS life_circumstances text[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_life_circumstances_check;
 ALTER TABLE public.user_profiles ADD CONSTRAINT user_profiles_life_circumstances_check CHECK (

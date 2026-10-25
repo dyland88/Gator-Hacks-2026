@@ -28,7 +28,6 @@ model UserProfile {
   lifeCircumstances String[] @default([]) @map("life_circumstances")
   location          String?
   locationId        String?  @map("location_id")
-  gender            String?
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 

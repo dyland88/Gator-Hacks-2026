@@ -2449,7 +2449,6 @@ export namespace Prisma {
     age: number | null
     location: string | null
     locationId: string | null
-    gender: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2459,7 +2458,6 @@ export namespace Prisma {
     age: number | null
     location: string | null
     locationId: string | null
-    gender: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2471,7 +2469,6 @@ export namespace Prisma {
     lifeCircumstances: number
     location: number
     locationId: number
-    gender: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -2491,7 +2488,6 @@ export namespace Prisma {
     age?: true
     location?: true
     locationId?: true
-    gender?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2501,7 +2497,6 @@ export namespace Prisma {
     age?: true
     location?: true
     locationId?: true
-    gender?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2513,7 +2508,6 @@ export namespace Prisma {
     lifeCircumstances?: true
     location?: true
     locationId?: true
-    gender?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -2612,7 +2606,6 @@ export namespace Prisma {
     lifeCircumstances: string[]
     location: string | null
     locationId: string | null
-    gender: string | null
     createdAt: Date
     updatedAt: Date
     _count: UserProfileCountAggregateOutputType | null
@@ -2643,7 +2636,6 @@ export namespace Prisma {
     lifeCircumstances?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2655,7 +2647,6 @@ export namespace Prisma {
     lifeCircumstances?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2667,7 +2658,6 @@ export namespace Prisma {
     lifeCircumstances?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2679,12 +2669,11 @@ export namespace Prisma {
     lifeCircumstances?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type UserProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tags" | "age" | "lifeCircumstances" | "location" | "locationId" | "gender" | "createdAt" | "updatedAt", ExtArgs["result"]["userProfile"]>
+  export type UserProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tags" | "age" | "lifeCircumstances" | "location" | "locationId" | "createdAt" | "updatedAt", ExtArgs["result"]["userProfile"]>
 
   export type $UserProfilePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "UserProfile"
@@ -2696,7 +2685,6 @@ export namespace Prisma {
       lifeCircumstances: string[]
       location: string | null
       locationId: string | null
-      gender: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["userProfile"]>
@@ -3128,7 +3116,6 @@ export namespace Prisma {
     readonly lifeCircumstances: FieldRef<"UserProfile", 'String[]'>
     readonly location: FieldRef<"UserProfile", 'String'>
     readonly locationId: FieldRef<"UserProfile", 'String'>
-    readonly gender: FieldRef<"UserProfile", 'String'>
     readonly createdAt: FieldRef<"UserProfile", 'DateTime'>
     readonly updatedAt: FieldRef<"UserProfile", 'DateTime'>
   }
@@ -8173,7 +8160,6 @@ export namespace Prisma {
     lifeCircumstances: 'lifeCircumstances',
     location: 'location',
     locationId: 'locationId',
-    gender: 'gender',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -8435,7 +8421,6 @@ export namespace Prisma {
     lifeCircumstances?: StringNullableListFilter<"UserProfile">
     location?: StringNullableFilter<"UserProfile"> | string | null
     locationId?: StringNullableFilter<"UserProfile"> | string | null
-    gender?: StringNullableFilter<"UserProfile"> | string | null
     createdAt?: DateTimeFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
   }
@@ -8447,7 +8432,6 @@ export namespace Prisma {
     lifeCircumstances?: SortOrder
     location?: SortOrderInput | SortOrder
     locationId?: SortOrderInput | SortOrder
-    gender?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -8462,7 +8446,6 @@ export namespace Prisma {
     lifeCircumstances?: StringNullableListFilter<"UserProfile">
     location?: StringNullableFilter<"UserProfile"> | string | null
     locationId?: StringNullableFilter<"UserProfile"> | string | null
-    gender?: StringNullableFilter<"UserProfile"> | string | null
     createdAt?: DateTimeFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
   }, "id">
@@ -8474,7 +8457,6 @@ export namespace Prisma {
     lifeCircumstances?: SortOrder
     location?: SortOrderInput | SortOrder
     locationId?: SortOrderInput | SortOrder
-    gender?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: UserProfileCountOrderByAggregateInput
@@ -8494,7 +8476,6 @@ export namespace Prisma {
     lifeCircumstances?: StringNullableListFilter<"UserProfile">
     location?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
     locationId?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
-    gender?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
   }
@@ -8906,7 +8887,6 @@ export namespace Prisma {
     lifeCircumstances?: UserProfileCreatelifeCircumstancesInput | string[]
     location?: string | null
     locationId?: string | null
-    gender?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8918,7 +8898,6 @@ export namespace Prisma {
     lifeCircumstances?: UserProfileCreatelifeCircumstancesInput | string[]
     location?: string | null
     locationId?: string | null
-    gender?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8930,7 +8909,6 @@ export namespace Prisma {
     lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8942,7 +8920,6 @@ export namespace Prisma {
     lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8954,7 +8931,6 @@ export namespace Prisma {
     lifeCircumstances?: UserProfileCreatelifeCircumstancesInput | string[]
     location?: string | null
     locationId?: string | null
-    gender?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8966,7 +8942,6 @@ export namespace Prisma {
     lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8978,7 +8953,6 @@ export namespace Prisma {
     lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -9563,7 +9537,6 @@ export namespace Prisma {
     lifeCircumstances?: SortOrder
     location?: SortOrder
     locationId?: SortOrder
-    gender?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9577,7 +9550,6 @@ export namespace Prisma {
     age?: SortOrder
     location?: SortOrder
     locationId?: SortOrder
-    gender?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9587,7 +9559,6 @@ export namespace Prisma {
     age?: SortOrder
     location?: SortOrder
     locationId?: SortOrder
-    gender?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }

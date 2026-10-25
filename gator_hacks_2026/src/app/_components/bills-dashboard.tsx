@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { SignupDialog } from "~/app/_components/signup-dialog";
 import { OrdinanceFeed } from "~/app/_components/ordinance-feed";
 import {
-  genderOptions,
+  guestProfileSchema,
+  storedProfileInputSchema,
   interestOptions,
   lifeCircumstanceOptions,
   profileInputSchema,
@@ -17,7 +19,6 @@ type Profile = {
   location: string;
   locationId: number | string | null;
   age: string;
-  gender: string;
   interests: string[];
   lifeCircumstances: string[];
 };
@@ -57,7 +58,6 @@ export function BillsDashboard() {
     location: "",
     locationId: null,
     age: "",
-    gender: "",
     interests: [],
     lifeCircumstances: [],
   });
@@ -88,6 +88,20 @@ export function BillsDashboard() {
       );
     }
     try {
+      for (let index = window.localStorage.length - 1; index >= 0; index--) {
+        const key = window.localStorage.key(index);
+        if (!key?.startsWith("ledgerline-signup-profile:")) continue;
+        try {
+          const pending = storedProfileInputSchema.safeParse(
+            JSON.parse(window.localStorage.getItem(key) ?? "null"),
+          );
+          if (pending.success)
+            window.localStorage.setItem(key, JSON.stringify(pending.data));
+          else window.localStorage.removeItem(key);
+        } catch {
+          window.localStorage.removeItem(key);
+        }
+      }
       const saved = window.localStorage.getItem("ledgerline-guest-onboarding");
       if (saved) {
         const stored = JSON.parse(saved) as {
@@ -95,18 +109,22 @@ export function BillsDashboard() {
           skipped?: boolean;
         };
         if (stored.profile) {
-          const restored = {
-            ...stored.profile,
-            interests: stored.profile.interests ?? [],
-            lifeCircumstances: lifeCircumstanceOptions.filter((value) =>
-              stored.profile?.lifeCircumstances?.includes(value),
-            ),
-          };
+          const restored = guestProfileSchema.parse(stored.profile);
+          window.localStorage.setItem(
+            "ledgerline-guest-onboarding",
+            JSON.stringify({ profile: restored }),
+          );
           setProfile(restored);
           setDraft(restored);
           return;
         }
-        if (stored.skipped) return;
+        if (stored.skipped) {
+          window.localStorage.setItem(
+            "ledgerline-guest-onboarding",
+            JSON.stringify({ skipped: true }),
+          );
+          return;
+        }
       }
     } catch {
       dialogRef.current?.showModal();
@@ -127,7 +145,6 @@ export function BillsDashboard() {
           location: "",
           locationId: null,
           age: "",
-          gender: "",
           interests: [],
           lifeCircumstances: [],
         };
@@ -156,13 +173,14 @@ export function BillsDashboard() {
         const pendingKey = `ledgerline-signup-profile:${signedInId}`;
         const pending = window.localStorage.getItem(pendingKey);
         if (pending) {
-          const parsed = profileInputSchema.safeParse(JSON.parse(pending));
+          const parsed = storedProfileInputSchema.safeParse(
+            JSON.parse(pending),
+          );
           const isEmpty =
             !stored ||
             (!stored.tags.length &&
               stored.age === null &&
               !stored.location &&
-              !stored.gender &&
               !stored.life_circumstances?.length);
           if (parsed.success && isEmpty) {
             stored = await utils.client.profile.save.mutate(parsed.data);
@@ -174,7 +192,6 @@ export function BillsDashboard() {
           location: stored?.location ?? "",
           locationId: stored?.location_id ?? null,
           age: stored?.age?.toString() ?? "",
-          gender: stored?.gender ?? "",
           interests: stored?.tags ?? [],
           lifeCircumstances: stored?.life_circumstances ?? [],
         };
@@ -296,7 +313,6 @@ export function BillsDashboard() {
       age: draft.age ? Number(draft.age) : null,
       location: draft.location || null,
       locationId: draft.locationId === null ? null : String(draft.locationId),
-      gender: draft.gender || null,
     });
     if (!result.success) {
       setProfileError(
@@ -400,20 +416,14 @@ export function BillsDashboard() {
     >
       <header className="bg-primary text-surface-cream flex h-16 flex-none items-center justify-between px-6 sm:px-10">
         <div className="flex items-center gap-2.5">
-          <svg
-            width="30"
-            height="16"
-            viewBox="0 0 30 16"
-            fill="none"
+          <Image
+            src="/images/seagull.png"
+            alt=""
+            width={36}
+            height={36}
+            className="shrink-0 object-contain brightness-0 invert"
             aria-hidden="true"
-          >
-            <path
-              d="M1 8C4 2 7 2 9 8C11 14 14 14 16 8C18 2 21 2 23 8C25 14 28 14 29 8"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+          />
           <span className="font-mono-ui text-[13px] tracking-[0.18em] uppercase">
             Legal Seagull
           </span>
@@ -511,18 +521,12 @@ export function BillsDashboard() {
             </button>
           </div>
 
-          {(profile.location || profile.age || profile.gender) && (
+          {(profile.location || profile.age) && (
             <p className="font-mono-ui text-primary/65 mb-6 text-[11px] tracking-[0.08em]">
               {profile.location}
               {profile.age && (
                 <>
                   {profile.location && " · "}Age {profile.age}
-                </>
-              )}
-              {profile.gender && (
-                <>
-                  {(profile.location || profile.age) && " · "}
-                  {profile.gender}
                 </>
               )}
             </p>
@@ -563,10 +567,16 @@ export function BillsDashboard() {
         >
           <div className="border-primary/20 flex items-center gap-3 border-b px-6 py-5">
             <div
-              className="bg-primary text-surface-cream font-display flex h-10 w-10 items-center justify-center rounded-full text-xl italic"
+              className="bg-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
               aria-hidden="true"
             >
-              L
+              <Image
+                src="/images/seagull.png"
+                alt=""
+                width={30}
+                height={30}
+                className="object-contain brightness-0 invert"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-display text-[22px] leading-tight">
@@ -883,26 +893,6 @@ export function BillsDashboard() {
                 className="border-primary/25 bg-surface-tan/50 rounded-lg border px-4 py-3 text-[14px] font-normal focus-visible:outline-2 focus-visible:outline-offset-2"
               />
             </label>
-            <label className="flex flex-col gap-2 text-[13px] font-semibold">
-              Gender (optional)
-              <select
-                value={draft.gender}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    gender: event.target.value,
-                  }))
-                }
-                className="border-primary/25 bg-surface-tan/50 rounded-lg border px-4 py-3 text-[14px] font-normal focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                <option value="">Select</option>
-                {genderOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
           <fieldset className="border-primary/20 mt-6 border-t pt-5">
             <legend className="text-[13px] font-semibold">
@@ -979,7 +969,6 @@ export function BillsDashboard() {
             location: profile.location || null,
             locationId:
               profile.locationId === null ? null : String(profile.locationId),
-            gender: profile.gender || null,
           });
           if (parsed.success) {
             try {
