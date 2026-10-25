@@ -425,28 +425,19 @@ describe("daily submission", () => {
 });
 
 describe("result persistence", () => {
-  it("keeps only relevance rules supported by the change excerpt and pins their source", async () => {
+  it("keeps inferred relevance rules without an explicit mention and pins their source", async () => {
     const { db, tx } = database();
     const rule = {
-      ageMin: 65,
+      ageMin: null,
       ageMax: null,
       lifeCircumstances: ["Renter"],
-      evidenceExcerpt: "Renters aged 65 and older.",
+      evidenceExcerpt: "Tenants must receive notice before eviction.",
     };
     await completeIngestion(
       {
         jobId,
         status: "completed",
-        data: result([
-          {
-            ...change,
-            evidenceExcerpt: `${change.evidenceExcerpt} ${rule.evidenceExcerpt}`,
-            relevanceRules: [
-              rule,
-              { ...rule, evidenceExcerpt: "Unsupported claim." },
-            ],
-          },
-        ]),
+        data: result([{ ...change, relevanceRules: [rule] }]),
       },
       db,
     );
