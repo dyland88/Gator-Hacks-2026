@@ -5,9 +5,13 @@ vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/lib/supabase-server", () => ({
   createServerSupabaseClient: vi.fn(),
 }));
+vi.mock("~/server/ordinances/ingestion", () => ({
+  submitCityIngestion: vi.fn(),
+}));
 
 import { ordinancesRouter } from "./ordinances";
 import { type createTRPCContext } from "../trpc";
+import { submitCityIngestion } from "~/server/ordinances/ingestion";
 
 const cityId = "ccf48957-3c42-462b-9ecf-95ad836e5da1";
 const userId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
@@ -213,5 +217,79 @@ describe("public legislative feed", () => {
       caller.feed({ municipalityId: cityId, userId } as never),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(db.ordinance.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("DBA city ingestion authorization", () => {
+  function dbaCaller(role: string | undefined) {
+    const db = {};
+    const ctx = {
+      db,
+      headers: new Headers(),
+      user: { id: userId, app_metadata: { role } },
+      supabase: {},
+    };
+    return ordinancesRouter.createCaller(
+      ctx as unknown as Awaited<ReturnType<typeof createTRPCContext>>,
+    );
+  }
+
+  it("rejects callers without the dba role before submitting an Agent run", async () => {
+    await expect(
+      dbaCaller("member").startCityIngestion({ city: "Austin", state: "TX" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      dbaCaller(undefined).startCityIngestion({ city: "Austin", state: "TX" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
+  });
+
+  it("normalizes a valid city and submits with the bounded lookback", async () => {
+    vi.mocked(submitCityIngestion).mockResolvedValueOnce({
+      runId: cursor,
+      status: "processing",
+      providerJobId: userId,
+    });
+    const response = await dbaCaller("dba").startCityIngestion({
+      city: " Austin ",
+      state: "tx",
+      lookbackDays: 90,
+    });
+    expect(response).toEqual({
+      runId: cursor,
+      status: "processing",
+      providerJobId: userId,
+    });
+    expect(submitCityIngestion).toHaveBeenCalledWith(
+      {
+        city: {
+          key: "us:tx:austin",
+          city: "Austin",
+          state: "TX",
+          label: "Austin, TX, United States",
+        },
+        lookbackDays: 90,
+      },
+      expect.any(Date),
+      expect.anything(),
+    );
+  });
+
+  it("rejects malformed locations and out-of-range lookbacks without spending credits", async () => {
+    const caller = dbaCaller("dba");
+    await expect(
+      caller.startCityIngestion({ city: "Austin, Texas", state: "TX" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller.startCityIngestion({ city: "Austin", state: "Atlantis" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller.startCityIngestion({
+        city: "Austin",
+        state: "TX",
+        lookbackDays: 366,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(submitCityIngestion).not.toHaveBeenCalled();
   });
 });

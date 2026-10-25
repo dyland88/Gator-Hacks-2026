@@ -5,9 +5,11 @@ import { normalizeMunicipality } from "~/lib/municipality";
 import { interestOptions } from "~/lib/profile";
 import {
   createTRPCRouter,
+  dbaProcedure,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { submitCityIngestion } from "~/server/ordinances/ingestion";
 import { queryOrdinanceChanges } from "~/server/ordinances/queries";
 import { queryInput } from "~/server/ordinances/schema";
 
@@ -167,4 +169,36 @@ export const ordinancesRouter = createTRPCRouter({
       });
     }
   }),
+  startCityIngestion: dbaProcedure
+    .input(
+      z
+        .object({
+          city: z.string().trim().min(1).max(100),
+          state: z.string().trim().min(2).max(40),
+          lookbackDays: z.number().int().min(1).max(365).default(30),
+        })
+        .strict(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const city = normalizeMunicipality(
+        `${input.city}, ${input.state}, United States`,
+      );
+      if (!city)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Enter a city and a U.S. state or state code.",
+        });
+      try {
+        return await submitCityIngestion(
+          { city, lookbackDays: input.lookbackDays },
+          new Date(),
+          ctx.db,
+        );
+      } catch {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "City ingestion could not be started.",
+        });
+      }
+    }),
 });

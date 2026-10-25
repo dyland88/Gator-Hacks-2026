@@ -109,6 +109,28 @@ export async function submitPollingIngestion(
   );
 }
 
+export async function submitCityIngestion(
+  input: { city: MunicipalityIdentity; lookbackDays: number },
+  now = new Date(),
+  database: PrismaClient = db,
+) {
+  requireIngestionConfig();
+  const windowEnd = new Date(now);
+  const windowStart = new Date(
+    windowEnd.getTime() - input.lookbackDays * 86_400_000,
+  );
+  return submitRun(
+    {
+      identities: [input.city],
+      windowStart,
+      windowEnd,
+      skippedCount: 0,
+      webhook: true,
+    },
+    database,
+  );
+}
+
 async function submitRun(
   input: {
     identities: MunicipalityIdentity[];

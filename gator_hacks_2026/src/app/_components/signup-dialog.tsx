@@ -146,14 +146,14 @@ export function SignupDialog({
             type="button"
             onClick={signOut}
             disabled={busy}
-            className="bg-primary text-surface-cream font-mono-ui mt-6 cursor-pointer rounded-full px-6 py-3 text-[11px] tracking-[0.08em] uppercase disabled:opacity-50"
+            className="bg-primary text-surface-cream font-mono-ui mt-6 cursor-pointer rounded-full px-6 py-3 text-[14px] tracking-[0.08em] uppercase disabled:opacity-50"
           >
             {busy ? "Signing out…" : "Sign out"}
           </button>
         </>
       ) : (
         <form onSubmit={submit} className="mt-7 grid gap-4">
-          <label className="flex flex-col gap-2 text-[13px] font-semibold">
+          <label className="flex flex-col gap-2 text-[14px] font-semibold">
             Email
             <input
               required
@@ -165,7 +165,7 @@ export function SignupDialog({
             />
           </label>
           {mode !== "reset" && (
-            <label className="flex flex-col gap-2 text-[13px] font-semibold">
+            <label className="flex flex-col gap-2 text-[14px] font-semibold">
               Password
               <input
                 required
@@ -181,7 +181,7 @@ export function SignupDialog({
             </label>
           )}
           {mode === "signup" && (
-            <label className="flex flex-col gap-2 text-[13px] font-semibold">
+            <label className="flex flex-col gap-2 text-[14px] font-semibold">
               Confirm password
               <input
                 required
@@ -195,19 +195,19 @@ export function SignupDialog({
             </label>
           )}
           {notice && (
-            <p role="status" className="text-[12px] leading-5">
+            <p role="status" className="text-[14px] leading-5">
               {notice}
             </p>
           )}
           {!supabase && (
-            <p className="text-[12px] leading-5">
+            <p className="text-[14px] leading-5">
               Account access is temporarily unavailable.
             </p>
           )}
           <button
             type="submit"
             disabled={!supabase || busy}
-            className="bg-primary text-surface-cream font-mono-ui mt-2 rounded-full px-6 py-3 text-[11px] tracking-[0.08em] uppercase enabled:cursor-pointer disabled:opacity-50"
+            className="bg-primary text-surface-cream font-mono-ui mt-2 rounded-full px-6 py-3 text-[14px] tracking-[0.08em] uppercase enabled:cursor-pointer disabled:opacity-50"
           >
             {busy
               ? "Please wait…"
@@ -221,7 +221,7 @@ export function SignupDialog({
             type="button"
             disabled={busy}
             onClick={() => changeMode(mode === "signup" ? "signin" : "signup")}
-            className="cursor-pointer text-[12px] underline underline-offset-2"
+            className="cursor-pointer text-[14px] underline underline-offset-2"
           >
             {mode === "signup"
               ? "Already have an account? Sign in"
@@ -232,7 +232,7 @@ export function SignupDialog({
               type="button"
               disabled={busy}
               onClick={() => changeMode("reset")}
-              className="cursor-pointer text-[12px] underline underline-offset-2"
+              className="cursor-pointer text-[14px] underline underline-offset-2"
             >
               Forgot your password?
             </button>
@@ -242,7 +242,7 @@ export function SignupDialog({
               type="button"
               disabled={busy}
               onClick={() => changeMode("signin")}
-              className="cursor-pointer text-[12px] underline underline-offset-2"
+              className="cursor-pointer text-[14px] underline underline-offset-2"
             >
               Back to sign in
             </button>
@@ -261,7 +261,7 @@ export function SignupDialog({
         type="button"
         disabled={busy}
         onClick={() => dialogRef.current?.close()}
-        className="font-mono-ui border-primary/35 hover:bg-surface-tan/50 mt-5 w-full cursor-pointer rounded-full border px-6 py-3 text-[11px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        className="font-mono-ui border-primary/35 hover:bg-surface-tan/50 mt-5 w-full cursor-pointer rounded-full border px-6 py-3 text-[14px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {signedInEmail ? "Close" : "Continue as guest"}
       </button>

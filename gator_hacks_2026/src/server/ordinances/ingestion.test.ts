@@ -12,12 +12,18 @@ vi.mock("./firecrawl", () => ({
 
 import { type PrismaClient } from "../../../generated/prisma";
 import { normalizeMunicipality } from "~/lib/municipality";
-import { getAgentStatus, startAgent, startPreviewAgent } from "./firecrawl";
+import {
+  getAgentStatus,
+  requireIngestionConfig,
+  startAgent,
+  startPreviewAgent,
+} from "./firecrawl";
 import {
   changeIdentity,
   completeIngestion,
   reconcileIngestion,
   reportingWindow,
+  submitCityIngestion,
   submitDailyIngestion,
   submitPollingIngestion,
   withinWindow,
@@ -259,6 +265,51 @@ describe("manual database ingestion", () => {
       ),
     ).rejects.toThrow("Reporting window is already claimed");
     expect(startPreviewAgent).not.toHaveBeenCalled();
+  });
+
+  it("starts a DBA city run with the requested lookback and webhook correlation", async () => {
+    const { db, tx, run, changes } = database();
+    const windowStart = new Date(now.getTime() - 90 * 86_400_000);
+    Object.assign(run, { windowStart, windowEnd: now });
+    vi.mocked(startAgent).mockResolvedValueOnce(jobId);
+    const submitted = await submitCityIngestion(
+      { city, lookbackDays: 90 },
+      now,
+      db,
+    );
+    expect(requireIngestionConfig).toHaveBeenCalled();
+    expect(startAgent).toHaveBeenCalledWith({
+      cities: [expect.objectContaining({ key: city.key })],
+      windowStart,
+      windowEnd: now,
+      runId: run.id,
+    });
+    expect(startPreviewAgent).not.toHaveBeenCalled();
+    expect(submitted.providerJobId).toBe(jobId);
+    expect(tx.ingestionRun.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [expect.objectContaining({ skippedCount: 0 })],
+      }),
+    );
+    expect(
+      await completeIngestion(
+        { jobId, runId: run.id, status: "completed", data: result() },
+        db,
+      ),
+    ).toBe("completed");
+    expect(changes.size).toBe(1);
+  });
+
+  it("does not create a run or spend credits when Firecrawl is not configured", async () => {
+    const { db, tx } = database();
+    vi.mocked(requireIngestionConfig).mockImplementationOnce(() => {
+      throw new Error("Ordinance ingestion is not configured");
+    });
+    await expect(
+      submitCityIngestion({ city, lookbackDays: 30 }, now, db),
+    ).rejects.toThrow("Ordinance ingestion is not configured");
+    expect(tx.ingestionRun.createMany).not.toHaveBeenCalled();
+    expect(startAgent).not.toHaveBeenCalled();
   });
 });
 

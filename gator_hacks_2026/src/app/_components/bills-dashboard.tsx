@@ -404,14 +404,14 @@ export function BillsDashboard() {
               strokeLinecap="round"
             />
           </svg>
-          <span className="font-mono-ui text-[13px] tracking-[0.18em] uppercase">
+          <span className="font-mono-ui text-[14px] tracking-[0.18em] uppercase">
             Ledgerline
           </span>
         </div>
         <button
           type="button"
           onClick={() => signupDialogRef.current?.showModal()}
-          className="font-mono-ui border-surface-cream/50 hover:bg-surface-cream hover:text-primary cursor-pointer rounded-full border px-4 py-2 text-[11px] tracking-[0.12em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="font-mono-ui border-surface-cream/50 hover:bg-surface-cream hover:text-primary cursor-pointer rounded-full border px-4 py-2 text-[14px] tracking-[0.12em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           {signedInEmail ? "Account" : "Sign in"}
         </button>
@@ -442,7 +442,7 @@ export function BillsDashboard() {
           )}
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
+              <p className="font-mono-ui text-[14px] tracking-[0.14em] uppercase">
                 Your legislative feed
               </p>
               <div className="relative mt-3 inline-flex items-center gap-3 rounded-lg focus-within:outline-2 focus-within:outline-offset-4">
@@ -493,7 +493,7 @@ export function BillsDashboard() {
             <button
               type="button"
               onClick={openDetails}
-              className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui cursor-pointer rounded-full border px-4 py-2.5 text-[11px] tracking-[0.1em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-4"
+              className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui cursor-pointer rounded-full border px-4 py-2.5 text-[14px] tracking-[0.1em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-4"
             >
               {profile.location || profile.interests.length
                 ? "Edit preferences"
@@ -502,7 +502,7 @@ export function BillsDashboard() {
           </div>
 
           {(profile.location || profile.age || profile.gender) && (
-            <p className="font-mono-ui text-primary/65 mb-6 text-[11px] tracking-[0.08em]">
+            <p className="font-mono-ui text-primary/65 mb-6 text-[14px] tracking-[0.08em]">
               {profile.location}
               {profile.age && (
                 <>
@@ -523,13 +523,13 @@ export function BillsDashboard() {
               className="mb-6 flex flex-wrap items-center gap-2"
               aria-label="Your interests"
             >
-              <span className="font-mono-ui text-primary/65 mr-1 text-[11px] tracking-[0.08em] uppercase">
+              <span className="font-mono-ui text-primary/65 mr-1 text-[14px] tracking-[0.08em] uppercase">
                 Following
               </span>
               {profile.interests.map((interest) => (
                 <span
                   key={interest}
-                  className="border-primary/30 bg-surface-cream rounded-full border px-3 py-1 text-[12px]"
+                  className="border-primary/30 bg-surface-cream rounded-full border px-3 py-1 text-[14px]"
                 >
                   {interest}
                 </span>
@@ -560,7 +560,7 @@ export function BillsDashboard() {
               <h2 className="font-display text-[22px] leading-tight">
                 Ask Ledgerline
               </h2>
-              <p className="font-mono-ui text-primary/60 text-[10px] tracking-[0.1em] uppercase">
+              <p className="font-mono-ui text-primary/60 text-[14px] tracking-[0.1em] uppercase">
                 AI chat workspace
               </p>
             </div>
@@ -569,7 +569,7 @@ export function BillsDashboard() {
                 type="button"
                 onClick={clearChat}
                 disabled={chatMutation.isPending}
-                className="font-mono-ui text-primary/65 hover:text-primary cursor-pointer text-[9px] tracking-[0.1em] uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                className="font-mono-ui text-primary/65 hover:text-primary cursor-pointer text-[14px] tracking-[0.1em] uppercase disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Clear
               </button>
@@ -599,7 +599,7 @@ export function BillsDashboard() {
               <h3 className="font-display text-[25px]">
                 Make sense of what matters.
               </h3>
-              <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[13px] leading-6">
+              <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[14px] leading-6">
                 Ask about legislation, civic processes, and what a bill could
                 mean in plain language.
               </p>
@@ -617,7 +617,7 @@ export function BillsDashboard() {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[13px] leading-5 whitespace-pre-wrap ${
+                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[14px] leading-5 whitespace-pre-wrap ${
                       message.role === "user"
                         ? "bg-primary text-surface-cream rounded-br-sm"
                         : "bg-surface-cream border-primary/15 rounded-bl-sm border"
@@ -650,14 +650,14 @@ export function BillsDashboard() {
             {chatError && (
               <div
                 role="alert"
-                className="border-primary/20 bg-surface-cream mb-3 rounded-xl border px-3 py-2.5 text-[11px] leading-4"
+                className="border-primary/20 bg-surface-cream mb-3 rounded-xl border px-3 py-2.5 text-[14px] leading-4"
               >
                 <p>{chatError}</p>
                 <button
                   type="button"
                   onClick={retryChat}
                   disabled={chatMutation.isPending}
-                  className="font-mono-ui mt-2 cursor-pointer text-[9px] tracking-[0.1em] uppercase underline underline-offset-2 disabled:cursor-not-allowed"
+                  className="font-mono-ui mt-2 cursor-pointer text-[14px] tracking-[0.1em] uppercase underline underline-offset-2 disabled:cursor-not-allowed"
                 >
                   Try again
                 </button>
@@ -675,7 +675,7 @@ export function BillsDashboard() {
                 disabled={chatMutation.isPending}
                 placeholder="Ask Ledgerline…"
                 aria-label="Message Ledgerline"
-                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
+                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[14px] outline-none disabled:cursor-wait"
               />
               <button
                 type="submit"
@@ -696,7 +696,7 @@ export function BillsDashboard() {
         className="bg-surface-cream text-primary font-body border-primary/20 m-auto max-h-[90vh] w-[min(92vw,560px)] overflow-y-auto rounded-[24px] border p-0 shadow-2xl backdrop:bg-gray-500/65"
       >
         <form onSubmit={saveProfile} className="p-7 sm:p-9">
-          <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
+          <p className="font-mono-ui text-[14px] tracking-[0.14em] uppercase">
             Set up your feed
           </p>
           <h2
@@ -714,10 +714,10 @@ export function BillsDashboard() {
           </p>
           <div className="mt-7 grid gap-5">
             <fieldset>
-              <legend className="text-[13px] font-semibold">
+              <legend className="text-[14px] font-semibold">
                 Topics you care about
               </legend>
-              <p className="text-primary/65 mt-1 text-[11px]">
+              <p className="text-primary/65 mt-1 text-[14px]">
                 Pick any number of topics. You can change them later.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -738,7 +738,7 @@ export function BillsDashboard() {
                             : [...current.interests, interest],
                         }))
                       }
-                      className={`cursor-pointer rounded-full border px-4 py-2 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selected ? "border-primary bg-primary text-surface-cream" : "border-primary/30 bg-surface-tan/40 hover:bg-surface-tan"}`}
+                      className={`cursor-pointer rounded-full border px-4 py-2 text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selected ? "border-primary bg-primary text-surface-cream" : "border-primary/30 bg-surface-tan/40 hover:bg-surface-tan"}`}
                     >
                       {interest}
                     </button>
@@ -746,7 +746,7 @@ export function BillsDashboard() {
                 })}
               </div>
             </fieldset>
-            <div className="flex flex-col gap-2 text-[13px] font-semibold">
+            <div className="flex flex-col gap-2 text-[14px] font-semibold">
               <label htmlFor="location-search">Location (optional)</label>
               <div className="relative">
                 <input
@@ -802,7 +802,7 @@ export function BillsDashboard() {
                             setLookupStatus("idle");
                             locationInputRef.current?.focus();
                           }}
-                          className="hover:bg-surface-tan focus:bg-surface-tan w-full cursor-pointer rounded-md px-3 py-2 text-left text-[13px] font-normal focus-visible:outline-none"
+                          className="hover:bg-surface-tan focus:bg-surface-tan w-full cursor-pointer rounded-md px-3 py-2 text-left text-[14px] font-normal focus-visible:outline-none"
                         >
                           {locationLabel(place)}
                         </button>
@@ -813,7 +813,7 @@ export function BillsDashboard() {
               </div>
               <p
                 id="location-help"
-                className="text-primary/65 text-[11px] font-normal"
+                className="text-primary/65 text-[14px] font-normal"
               >
                 {lookupStatus === "loading"
                   ? "Searching locations…"
@@ -831,7 +831,7 @@ export function BillsDashboard() {
                             ? "Enter all 5 digits of a US ZIP code."
                             : "Type at least 3 characters, then choose a match."}
               </p>
-              <p className="text-primary/55 text-[10px] font-normal">
+              <p className="text-primary/55 text-[14px] font-normal">
                 Location data: GeoNames via{" "}
                 <a
                   href="https://open-meteo.com/en/docs/geocoding-api"
@@ -852,7 +852,7 @@ export function BillsDashboard() {
                 </a>
               </p>
             </div>
-            <label className="flex flex-col gap-2 text-[13px] font-semibold">
+            <label className="flex flex-col gap-2 text-[14px] font-semibold">
               Age (optional)
               <input
                 type="number"
@@ -869,7 +869,7 @@ export function BillsDashboard() {
                 className="border-primary/25 bg-surface-tan/50 rounded-lg border px-4 py-3 text-[14px] font-normal focus-visible:outline-2 focus-visible:outline-offset-2"
               />
             </label>
-            <label className="flex flex-col gap-2 text-[13px] font-semibold">
+            <label className="flex flex-col gap-2 text-[14px] font-semibold">
               Gender (optional)
               <select
                 value={draft.gender}
@@ -899,14 +899,14 @@ export function BillsDashboard() {
             <button
               type="button"
               onClick={skipOnboarding}
-              className="font-mono-ui cursor-pointer px-4 py-3 text-[11px] tracking-[0.08em] uppercase"
+              className="font-mono-ui cursor-pointer px-4 py-3 text-[14px] tracking-[0.08em] uppercase"
             >
               Not now
             </button>
             <button
               type="submit"
               disabled={saveProfileMutation.isPending || profileLoading}
-              className="bg-primary text-surface-cream font-mono-ui cursor-pointer rounded-full px-6 py-3 text-[11px] tracking-[0.08em] uppercase"
+              className="bg-primary text-surface-cream font-mono-ui cursor-pointer rounded-full px-6 py-3 text-[14px] tracking-[0.08em] uppercase"
             >
               {saveProfileMutation.isPending ? "Saving…" : "Save preferences"}
             </button>
