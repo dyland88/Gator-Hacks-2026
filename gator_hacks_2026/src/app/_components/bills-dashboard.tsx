@@ -46,8 +46,6 @@ function locationLabel(place: LocationResult) {
   return place.postcode ? `${place.postcode} — ${placeName}` : placeName;
 }
 
-const sections = ["Bills", "Amendments"] as const;
-
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const signupDialogRef = useRef<HTMLDialogElement>(null);
@@ -70,8 +68,6 @@ export function BillsDashboard() {
   const [authError, setAuthError] = useState<string | null>(null);
   const utils = api.useUtils();
   const saveProfileMutation = api.profile.save.useMutation();
-  const [currentSection, setCurrentSection] =
-    useState<(typeof sections)[number]>("Bills");
   const [locations, setLocations] = useState<LocationResult[]>([]);
   const [lookupStatus, setLookupStatus] = useState<
     "idle" | "loading" | "empty" | "error"
@@ -461,55 +457,9 @@ export function BillsDashboard() {
             </p>
           )}
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
-                Your legislative feed
-              </p>
-              <div className="relative mt-3 inline-flex items-center gap-3 rounded-lg focus-within:outline-2 focus-within:outline-offset-4">
-                <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
-                  <span
-                    key={currentSection}
-                    className="section-switch-blink inline-block"
-                  >
-                    {currentSection} for you
-                  </span>
-                </h1>
-                <svg
-                  width="20"
-                  height="14"
-                  viewBox="0 0 20 14"
-                  fill="none"
-                  aria-hidden="true"
-                  className="shrink-0"
-                >
-                  <path
-                    d="m4 4 6 6 6-6"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <select
-                  aria-label="Choose feed type"
-                  value={currentSection}
-                  onChange={(event) =>
-                    setCurrentSection(
-                      event.target.value === "Amendments"
-                        ? "Amendments"
-                        : "Bills",
-                    )
-                  }
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                >
-                  {sections.map((section) => (
-                    <option key={section} value={section}>
-                      {section}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
+              Legislation for you
+            </h1>
             <button
               type="button"
               onClick={openDetails}
@@ -520,17 +470,6 @@ export function BillsDashboard() {
                 : "Set up feed"}
             </button>
           </div>
-
-          {(profile.location || profile.age) && (
-            <p className="font-mono-ui text-primary/65 mb-6 text-[11px] tracking-[0.08em]">
-              {profile.location}
-              {profile.age && (
-                <>
-                  {profile.location && " · "}Age {profile.age}
-                </>
-              )}
-            </p>
-          )}
 
           {profile.interests.length > 0 && (
             <div
@@ -557,7 +496,7 @@ export function BillsDashboard() {
             interests={profile.interests}
             age={profile.age ? Number(profile.age) : null}
             lifeCircumstances={profile.lifeCircumstances}
-            section={currentSection}
+            section="Bills"
           />
         </main>
 
@@ -739,9 +678,6 @@ export function BillsDashboard() {
               <legend className="text-[13px] font-semibold">
                 Topics you care about
               </legend>
-              <p className="text-primary/65 mt-1 text-[11px]">
-                Pick any number of topics. You can change them later.
-              </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {interestOptions.map((interest) => {
                   const selected = draft.interests.includes(interest);
@@ -901,10 +837,9 @@ export function BillsDashboard() {
               id="circumstances-help"
               className="text-primary/70 mt-2 text-[12px] leading-5"
             >
-              Choose any that apply. Your age and these choices highlight bills
-              that explicitly affect people in your situation. They do not
-              determine eligibility or hide other bills. Clear any choice to
-              stop using it. These details are not sent to AI services.
+              This information is used to improve the relevance
+              of the legislation presented to you. This will not exclude results from
+              your feed.
             </p>
             <div
               className="mt-3 flex flex-wrap gap-2"
