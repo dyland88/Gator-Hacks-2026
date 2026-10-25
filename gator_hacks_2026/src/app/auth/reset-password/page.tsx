@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
           href="/"
           className="mt-6 inline-block text-sm underline underline-offset-2"
         >
-          Back to Ledgerline
+          Back to Legal Seagull
         </Link>
       </div>
     </main>

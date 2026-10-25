@@ -342,7 +342,7 @@ export function BillsDashboard() {
         onError(error) {
           setChatError(
             error.message ||
-              "Ledgerline could not answer right now. Please try again.",
+              "Legal Seagull could not answer right now. Please try again.",
           );
         },
       },
@@ -405,7 +405,7 @@ export function BillsDashboard() {
             />
           </svg>
           <span className="font-mono-ui text-[13px] tracking-[0.18em] uppercase">
-            Ledgerline
+            Legal Seagull
           </span>
         </div>
         <button
@@ -558,7 +558,7 @@ export function BillsDashboard() {
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-display text-[22px] leading-tight">
-                Ask Ledgerline
+                Ask Legal Seagull
               </h2>
               <p className="font-mono-ui text-primary/60 text-[10px] tracking-[0.1em] uppercase">
                 AI chat workspace
@@ -608,7 +608,7 @@ export function BillsDashboard() {
             <div
               role="log"
               aria-live="polite"
-              aria-label="Conversation with Ledgerline"
+              aria-label="Conversation with Legal Seagull"
               className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5"
             >
               {chatMessages.map((message) => (
@@ -630,7 +630,7 @@ export function BillsDashboard() {
               {chatMutation.isPending && (
                 <div
                   className="flex justify-start"
-                  aria-label="Ledgerline is thinking"
+                  aria-label="Legal Seagull is thinking"
                 >
                   <div className="bg-surface-cream border-primary/15 flex gap-1 rounded-[16px] rounded-bl-sm border px-4 py-4">
                     {[0, 1, 2].map((dot) => (
@@ -673,8 +673,8 @@ export function BillsDashboard() {
                 maxLength={2_000}
                 onChange={(event) => setChatDraft(event.target.value)}
                 disabled={chatMutation.isPending}
-                placeholder="Ask Ledgerline…"
-                aria-label="Message Ledgerline"
+                placeholder="Ask Legal Seagull…"
+                aria-label="Message Legal Seagull"
                 className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
               />
               <button

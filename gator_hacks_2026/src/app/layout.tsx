@@ -5,7 +5,7 @@ import { type Metadata } from "next";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
-  title: "Ledgerline",
+  title: "Legal Seagull",
   description: "Gator Hack V project",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };

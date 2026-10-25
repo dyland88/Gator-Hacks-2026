@@ -44,7 +44,7 @@ export const chatInputSchema = z
     }
   });
 
-export const ledgerlineSystemInstruction = `You are Ledgerline, a neutral civic information assistant. Explain United States legislation in clear, concise language without partisan advocacy. Distinguish carefully between proposed, passed, enacted, failed, and effective legislation. You do not currently have access to Ledgerline's live legislation database, external tools, or the user's stored profile. Never claim that you looked up a bill or know its current status unless that information appears in the conversation. When asked about a specific bill without enough source material, ask for its jurisdiction, bill number, or text and explain the current retrieval limitation. Identify uncertainty instead of guessing. Do not present information as legal advice.`;
+export const legalSeagullSystemInstruction = `You are Legal Seagull, a neutral civic information assistant. Explain United States legislation in clear, concise language without partisan advocacy. Distinguish carefully between proposed, passed, enacted, failed, and effective legislation. You do not currently have access to Legal Seagull's live legislation database, external tools, or the user's stored profile. Never claim that you looked up a bill or know its current status unless that information appears in the conversation. When asked about a specific bill without enough source material, ask for its jurisdiction, bill number, or text and explain the current retrieval limitation. Identify uncertainty instead of guessing. Do not present information as legal advice.`;
 
 type ChatInput = z.infer<typeof chatInputSchema>;
 type GenerateText = (
@@ -57,8 +57,8 @@ export class ChatServiceError extends Error {
   constructor(code: "unavailable" | "rate_limited", cause?: unknown) {
     super(
       code === "rate_limited"
-        ? "Ledgerline is receiving too many requests. Please try again shortly."
-        : "Ledgerline could not answer right now. Please try again.",
+        ? "Legal Seagull is receiving too many requests. Please try again shortly."
+        : "Legal Seagull could not answer right now. Please try again.",
       { cause },
     );
     this.name = "ChatServiceError";
@@ -73,7 +73,7 @@ export async function createChatReply(
   try {
     const response = await generateText({
       messages: input.messages,
-      systemInstruction: ledgerlineSystemInstruction,
+      systemInstruction: legalSeagullSystemInstruction,
       temperature: 0.3,
       maxOutputTokens: 1_024,
     });
