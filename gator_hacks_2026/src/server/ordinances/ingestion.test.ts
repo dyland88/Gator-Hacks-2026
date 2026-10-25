@@ -13,6 +13,7 @@ vi.mock("./firecrawl", () => ({
 import { type PrismaClient } from "../../../generated/prisma";
 import { normalizeMunicipality } from "~/lib/municipality";
 import {
+  FirecrawlError,
   getAgentStatus,
   requireIngestionConfig,
   startAgent,
@@ -813,5 +814,56 @@ describe("reconciliation", () => {
       "reconciliation_failed",
     );
     expect(startAgent).not.toHaveBeenCalled();
+  });
+});
+
+describe("credit exhaustion failures", () => {
+  it("fails a city run at submission when Firecrawl has no credits and logs the reason for developers", async () => {
+    const { db, tx, run } = database();
+    Object.assign(run, {
+      windowStart: new Date(now.getTime() - 90 * 86_400_000),
+      windowEnd: now,
+    });
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    vi.mocked(startAgent).mockRejectedValueOnce(
+      Object.assign(new FirecrawlError("credit_limit_reached"), {
+        code: "credit_limit_reached",
+      }),
+    );
+    await submitCityIngestion({ city, lookbackDays: 90 }, now, db);
+    expect(startAgent).toHaveBeenCalledOnce();
+    expect(tx.ingestionRun.updateMany.mock.calls[0]![0]).toMatchObject({
+      data: {
+        status: "failed",
+        failureCode: "credit_limit_reached",
+      },
+    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("failed: credit_limit_reached"),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it("marks a credit-limited agent result as failed and logs it without writing ordinances", async () => {
+    const { db, tx, run } = database();
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    expect(
+      await completeIngestion(
+        { jobId, runId: run.id, status: "credit_limit_reached" },
+        db,
+      ),
+    ).toBe("failed");
+    expect(tx.ingestionRun.update.mock.calls[0]![0]).toMatchObject({
+      data: { status: "failed", failureCode: "credit_limit_reached" },
+    });
+    expect(tx.ordinance.upsert).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      `[ordinance-ingestion] run=${run.id} job=${jobId} failed: credit_limit_reached`,
+    );
+    errorSpy.mockRestore();
   });
 });

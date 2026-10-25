@@ -53,6 +53,19 @@
   }
 }
 
+@keyframes research-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.research-sweep {
+  animation: research-sweep 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
 @keyframes section-blink {
   0%,
   50% {
@@ -119,6 +132,7 @@
 @media (prefers-reduced-motion: reduce) {
   .bill-loading-slot,
   .bill-loading-slot::after,
+  .research-sweep,
   .section-switch-blink {
     animation: none;
   }
