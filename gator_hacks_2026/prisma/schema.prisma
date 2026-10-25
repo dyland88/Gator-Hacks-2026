@@ -22,14 +22,15 @@ model Post {
 }
 
 model UserProfile {
-  id         String   @id @db.Uuid
-  tags       String[] @default([])
-  age        Int?
-  location   String?
-  locationId String?  @map("location_id")
-  gender     String?
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id                  String   @id @db.Uuid
+  tags                String[] @default([])
+  age                 Int?
+  location            String?
+  locationId          String?  @map("location_id")
+  gender              String?
+  weeklyDigestEnabled Boolean  @default(false) @map("weekly_digest_enabled")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@map("user_profiles")
 }
@@ -46,20 +47,20 @@ model Municipality {
 }
 
 model IngestionRun {
-  id             String            @id @default(uuid()) @db.Uuid
-  windowStart    DateTime           @db.Timestamptz(6)
-  windowEnd      DateTime           @unique @db.Timestamptz(6)
-  cities         Json
-  skippedCount   Int               @default(0)
-  status         String            @default("submitting")
-  providerJobId  String?           @unique
-  coverage       Json?
-  creditsUsed    Float?
-  rejectedCount  Int               @default(0)
-  failureCode    String?
-  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
-  completedAt    DateTime?          @db.Timestamptz(6)
-  changes        OrdinanceChange[]
+  id            String            @id @default(uuid()) @db.Uuid
+  windowStart   DateTime          @db.Timestamptz(6)
+  windowEnd     DateTime          @unique @db.Timestamptz(6)
+  cities        Json
+  skippedCount  Int               @default(0)
+  status        String            @default("submitting")
+  providerJobId String?           @unique
+  coverage      Json?
+  creditsUsed   Float?
+  rejectedCount Int               @default(0)
+  failureCode   String?
+  createdAt     DateTime          @default(now()) @db.Timestamptz(6)
+  completedAt   DateTime?         @db.Timestamptz(6)
+  changes       OrdinanceChange[]
 
   @@index([status, createdAt])
   @@map("ingestion_runs")

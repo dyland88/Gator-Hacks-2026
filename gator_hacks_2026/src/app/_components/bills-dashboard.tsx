@@ -18,6 +18,7 @@ type Profile = {
   age: string;
   gender: string;
   interests: string[];
+  weeklyDigestEnabled: boolean;
 };
 
 type LocationResult = {
@@ -57,6 +58,7 @@ export function BillsDashboard() {
     age: "",
     gender: "",
     interests: [],
+    weeklyDigestEnabled: false,
   });
   const [draft, setDraft] = useState<Profile>(profile);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
@@ -95,6 +97,7 @@ export function BillsDashboard() {
           const restored = {
             ...stored.profile,
             interests: stored.profile.interests ?? [],
+            weeklyDigestEnabled: stored.profile.weeklyDigestEnabled ?? false,
           };
           setProfile(restored);
           setDraft(restored);
@@ -123,6 +126,7 @@ export function BillsDashboard() {
           age: "",
           gender: "",
           interests: [],
+          weeklyDigestEnabled: false,
         };
         setProfile(empty);
         setDraft(empty);
@@ -155,7 +159,8 @@ export function BillsDashboard() {
             (!stored.tags.length &&
               stored.age === null &&
               !stored.location &&
-              !stored.gender);
+              !stored.gender &&
+              !stored.weekly_digest_enabled);
           if (parsed.success && isEmpty) {
             stored = await utils.client.profile.save.mutate(parsed.data);
           }
@@ -168,6 +173,7 @@ export function BillsDashboard() {
           age: stored?.age?.toString() ?? "",
           gender: stored?.gender ?? "",
           interests: stored?.tags ?? [],
+          weeklyDigestEnabled: stored?.weekly_digest_enabled ?? false,
         };
         setProfile(restored);
         setDraft(restored);
@@ -287,6 +293,7 @@ export function BillsDashboard() {
       location: draft.location || null,
       locationId: draft.locationId === null ? null : String(draft.locationId),
       gender: draft.gender || null,
+      weeklyDigestEnabled: draft.weeklyDigestEnabled,
     });
     if (!result.success) {
       setProfileError(
@@ -889,6 +896,28 @@ export function BillsDashboard() {
                 ))}
               </select>
             </label>
+            <label className="border-primary/15 bg-surface-tan/35 flex items-start gap-3 rounded-xl border p-4 text-[13px]">
+              <input
+                type="checkbox"
+                checked={draft.weeklyDigestEnabled}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    weeklyDigestEnabled: event.target.checked,
+                  }))
+                }
+                className="accent-primary mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>
+                <span className="font-semibold">
+                  Email me a weekly local ordinance digest
+                </span>
+                <span className="text-primary/65 mt-1 block text-[11px] leading-5 font-normal">
+                  Sent to your confirmed account email, with new activity from
+                  your selected city. You can unsubscribe at any time.
+                </span>
+              </span>
+            </label>
           </div>
           {profileError && (
             <p role="alert" className="mt-4 text-sm">
@@ -924,6 +953,7 @@ export function BillsDashboard() {
             locationId:
               profile.locationId === null ? null : String(profile.locationId),
             gender: profile.gender || null,
+            weeklyDigestEnabled: profile.weeklyDigestEnabled,
           });
           if (parsed.success) {
             try {

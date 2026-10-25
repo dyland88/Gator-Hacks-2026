@@ -2450,6 +2450,7 @@ export namespace Prisma {
     location: string | null
     locationId: string | null
     gender: string | null
+    weeklyDigestEnabled: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2460,6 +2461,7 @@ export namespace Prisma {
     location: string | null
     locationId: string | null
     gender: string | null
+    weeklyDigestEnabled: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2471,6 +2473,7 @@ export namespace Prisma {
     location: number
     locationId: number
     gender: number
+    weeklyDigestEnabled: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -2491,6 +2494,7 @@ export namespace Prisma {
     location?: true
     locationId?: true
     gender?: true
+    weeklyDigestEnabled?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2501,6 +2505,7 @@ export namespace Prisma {
     location?: true
     locationId?: true
     gender?: true
+    weeklyDigestEnabled?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2512,6 +2517,7 @@ export namespace Prisma {
     location?: true
     locationId?: true
     gender?: true
+    weeklyDigestEnabled?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -2610,6 +2616,7 @@ export namespace Prisma {
     location: string | null
     locationId: string | null
     gender: string | null
+    weeklyDigestEnabled: boolean
     createdAt: Date
     updatedAt: Date
     _count: UserProfileCountAggregateOutputType | null
@@ -2640,6 +2647,7 @@ export namespace Prisma {
     location?: boolean
     locationId?: boolean
     gender?: boolean
+    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2651,6 +2659,7 @@ export namespace Prisma {
     location?: boolean
     locationId?: boolean
     gender?: boolean
+    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2662,6 +2671,7 @@ export namespace Prisma {
     location?: boolean
     locationId?: boolean
     gender?: boolean
+    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2673,11 +2683,12 @@ export namespace Prisma {
     location?: boolean
     locationId?: boolean
     gender?: boolean
+    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type UserProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tags" | "age" | "location" | "locationId" | "gender" | "createdAt" | "updatedAt", ExtArgs["result"]["userProfile"]>
+  export type UserProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tags" | "age" | "location" | "locationId" | "gender" | "weeklyDigestEnabled" | "createdAt" | "updatedAt", ExtArgs["result"]["userProfile"]>
 
   export type $UserProfilePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "UserProfile"
@@ -2689,6 +2700,7 @@ export namespace Prisma {
       location: string | null
       locationId: string | null
       gender: string | null
+      weeklyDigestEnabled: boolean
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["userProfile"]>
@@ -3120,6 +3132,7 @@ export namespace Prisma {
     readonly location: FieldRef<"UserProfile", 'String'>
     readonly locationId: FieldRef<"UserProfile", 'String'>
     readonly gender: FieldRef<"UserProfile", 'String'>
+    readonly weeklyDigestEnabled: FieldRef<"UserProfile", 'Boolean'>
     readonly createdAt: FieldRef<"UserProfile", 'DateTime'>
     readonly updatedAt: FieldRef<"UserProfile", 'DateTime'>
   }
@@ -8155,6 +8168,7 @@ export namespace Prisma {
     location: 'location',
     locationId: 'locationId',
     gender: 'gender',
+    weeklyDigestEnabled: 'weeklyDigestEnabled',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -8326,6 +8340,13 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'Boolean'
+   */
+  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+  /**
    * Reference to a field of type 'Json'
    */
   export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -8415,6 +8436,7 @@ export namespace Prisma {
     location?: StringNullableFilter<"UserProfile"> | string | null
     locationId?: StringNullableFilter<"UserProfile"> | string | null
     gender?: StringNullableFilter<"UserProfile"> | string | null
+    weeklyDigestEnabled?: BoolFilter<"UserProfile"> | boolean
     createdAt?: DateTimeFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
   }
@@ -8426,6 +8448,7 @@ export namespace Prisma {
     location?: SortOrderInput | SortOrder
     locationId?: SortOrderInput | SortOrder
     gender?: SortOrderInput | SortOrder
+    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -8440,6 +8463,7 @@ export namespace Prisma {
     location?: StringNullableFilter<"UserProfile"> | string | null
     locationId?: StringNullableFilter<"UserProfile"> | string | null
     gender?: StringNullableFilter<"UserProfile"> | string | null
+    weeklyDigestEnabled?: BoolFilter<"UserProfile"> | boolean
     createdAt?: DateTimeFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
   }, "id">
@@ -8451,6 +8475,7 @@ export namespace Prisma {
     location?: SortOrderInput | SortOrder
     locationId?: SortOrderInput | SortOrder
     gender?: SortOrderInput | SortOrder
+    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: UserProfileCountOrderByAggregateInput
@@ -8470,6 +8495,7 @@ export namespace Prisma {
     location?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
     locationId?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
     gender?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
+    weeklyDigestEnabled?: BoolWithAggregatesFilter<"UserProfile"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
   }
@@ -8876,6 +8902,7 @@ export namespace Prisma {
     location?: string | null
     locationId?: string | null
     gender?: string | null
+    weeklyDigestEnabled?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8887,6 +8914,7 @@ export namespace Prisma {
     location?: string | null
     locationId?: string | null
     gender?: string | null
+    weeklyDigestEnabled?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8898,6 +8926,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
     gender?: NullableStringFieldUpdateOperationsInput | string | null
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8909,6 +8938,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
     gender?: NullableStringFieldUpdateOperationsInput | string | null
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8920,6 +8950,7 @@ export namespace Prisma {
     location?: string | null
     locationId?: string | null
     gender?: string | null
+    weeklyDigestEnabled?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8931,6 +8962,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
     gender?: NullableStringFieldUpdateOperationsInput | string | null
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8942,6 +8974,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
     gender?: NullableStringFieldUpdateOperationsInput | string | null
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -9507,6 +9540,11 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
+  export type BoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -9519,6 +9557,7 @@ export namespace Prisma {
     location?: SortOrder
     locationId?: SortOrder
     gender?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9533,6 +9572,7 @@ export namespace Prisma {
     location?: SortOrder
     locationId?: SortOrder
     gender?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9543,6 +9583,7 @@ export namespace Prisma {
     location?: SortOrder
     locationId?: SortOrder
     gender?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9598,6 +9639,14 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
+  }
+
+  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type OrdinanceListRelationFilter = {
@@ -10001,6 +10050,10 @@ export namespace Prisma {
     set?: string | null
   }
 
+  export type BoolFieldUpdateOperationsInput = {
+    set?: boolean
+  }
+
   export type OrdinanceCreateNestedManyWithoutMunicipalityInput = {
     create?: XOR<OrdinanceCreateWithoutMunicipalityInput, OrdinanceUncheckedCreateWithoutMunicipalityInput> | OrdinanceCreateWithoutMunicipalityInput[] | OrdinanceUncheckedCreateWithoutMunicipalityInput[]
     connectOrCreate?: OrdinanceCreateOrConnectWithoutMunicipalityInput | OrdinanceCreateOrConnectWithoutMunicipalityInput[]
@@ -10320,6 +10373,11 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type NestedUuidWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -10376,6 +10434,14 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
+  }
+
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type NestedDateTimeNullableFilter<$PrismaModel = never> = {

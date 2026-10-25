@@ -135,6 +135,7 @@ exports.Prisma.UserProfileScalarFieldEnum = {
   location: 'location',
   locationId: 'locationId',
   gender: 'gender',
+  weeklyDigestEnabled: 'weeklyDigestEnabled',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

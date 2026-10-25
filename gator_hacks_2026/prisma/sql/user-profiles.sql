@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   location text CHECK (char_length(location) <= 300),
   location_id text CHECK (char_length(location_id) <= 100),
   gender text CHECK (gender IN ('Woman', 'Man', 'Non-binary', 'Prefer not to say')),
+  weekly_digest_enabled boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT user_profiles_tags_check CHECK (

@@ -44,6 +44,7 @@ export const profileInputSchema = z
     location: z.string().trim().max(300).nullable(),
     locationId: z.string().trim().max(100).nullable(),
     gender: z.enum(genderOptions).nullable(),
+    weeklyDigestEnabled: z.boolean().optional(),
   })
   .strict();
 
@@ -56,6 +57,7 @@ export type StoredProfile = {
   location: string | null;
   location_id: string | null;
   gender: string | null;
+  weekly_digest_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -72,6 +74,7 @@ export type Database = {
           location?: string | null;
           location_id?: string | null;
           gender?: string | null;
+          weekly_digest_enabled?: boolean;
         };
         Update: Partial<Omit<StoredProfile, "created_at" | "updated_at">>;
         Relationships: [];

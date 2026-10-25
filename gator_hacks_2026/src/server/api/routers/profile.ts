@@ -30,6 +30,9 @@ export const profileRouter = createTRPCRouter({
             location: input.location === "" ? null : input.location,
             location_id: input.locationId === "" ? null : input.locationId,
             gender: input.gender,
+            ...(input.weeklyDigestEnabled === undefined
+              ? {}
+              : { weekly_digest_enabled: input.weeklyDigestEnabled }),
           },
           { onConflict: "id" },
         )
