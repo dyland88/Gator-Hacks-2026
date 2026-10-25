@@ -15,6 +15,14 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   )
 );
 
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS life_circumstances text[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_life_circumstances_check;
+ALTER TABLE public.user_profiles ADD CONSTRAINT user_profiles_life_circumstances_check CHECK (
+  cardinality(life_circumstances) <= 11 AND
+  array_position(life_circumstances, NULL) IS NULL AND
+  life_circumstances <@ ARRAY['Student', 'Renter', 'Homeowner', 'Parent or guardian', 'Caregiver', 'Employed', 'Job seeker', 'Small-business owner', 'Retired', 'Veteran', 'Person with a disability']::text[]
+);
+
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.user_profiles FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.user_profiles TO authenticated;

@@ -22,7 +22,7 @@ BEGIN
   IF (SELECT count(*) FROM public.user_profiles) <> 1 THEN
     RAISE EXCEPTION 'Profile isolation failed';
   END IF;
-  UPDATE public.user_profiles SET age = 27, location = 'Gainesville, Florida', location_id = 'us:32601:0', gender = 'Woman', tags = ARRAY['Housing', 'Education'] WHERE id = '7a09c177-6c7c-48ab-bb1f-441dd73c72c1';
+  UPDATE public.user_profiles SET age = 27, location = 'Gainesville, Florida', location_id = 'us:32601:0', gender = 'Woman', tags = ARRAY['Housing', 'Education'], life_circumstances = ARRAY['Student', 'Renter'] WHERE id = '7a09c177-6c7c-48ab-bb1f-441dd73c72c1';
   GET DIAGNOSTICS affected = ROW_COUNT;
   IF affected <> 1 THEN RAISE EXCEPTION 'Owner update failed'; END IF;
   UPDATE public.user_profiles SET age = 99 WHERE id = '7a09c177-6c7c-48ab-bb1f-441dd73c72c2';
@@ -46,6 +46,16 @@ BEGIN
   BEGIN
     UPDATE public.user_profiles SET tags = ARRAY['Unknown'];
     RAISE EXCEPTION 'Invalid tags allowed';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    UPDATE public.user_profiles SET life_circumstances = ARRAY['Unknown'];
+    RAISE EXCEPTION 'Invalid life circumstances allowed';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    UPDATE public.user_profiles SET life_circumstances = ARRAY[NULL]::text[];
+    RAISE EXCEPTION 'Null life circumstance allowed';
   EXCEPTION WHEN check_violation THEN NULL;
   END;
 END;

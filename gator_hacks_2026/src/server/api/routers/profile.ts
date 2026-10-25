@@ -27,6 +27,7 @@ export const profileRouter = createTRPCRouter({
             id: ctx.user.id,
             tags: input.tags,
             age: input.age,
+            life_circumstances: input.lifeCircumstances,
             location: input.location === "" ? null : input.location,
             location_id: input.locationId === "" ? null : input.locationId,
             gender: input.gender,

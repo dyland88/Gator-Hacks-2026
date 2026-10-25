@@ -34,6 +34,25 @@ export const genderOptions = [
   "Prefer not to say",
 ] as const;
 
+export const lifeCircumstanceOptions = [
+  "Student",
+  "Renter",
+  "Homeowner",
+  "Parent or guardian",
+  "Caregiver",
+  "Employed",
+  "Job seeker",
+  "Small-business owner",
+  "Retired",
+  "Veteran",
+  "Person with a disability",
+] as const;
+
+export const lifeCircumstancesSchema = z
+  .array(z.enum(lifeCircumstanceOptions))
+  .max(lifeCircumstanceOptions.length)
+  .transform((values) => [...new Set(values)]);
+
 export const profileInputSchema = z
   .object({
     tags: z
@@ -41,6 +60,7 @@ export const profileInputSchema = z
       .max(interestOptions.length)
       .transform((tags) => [...new Set(tags)]),
     age: z.number().int().min(1).max(120).nullable(),
+    lifeCircumstances: lifeCircumstancesSchema.default([]),
     location: z.string().trim().max(300).nullable(),
     locationId: z.string().trim().max(100).nullable(),
     gender: z.enum(genderOptions).nullable(),
@@ -53,6 +73,7 @@ export type StoredProfile = {
   id: string;
   tags: string[];
   age: number | null;
+  life_circumstances: string[];
   location: string | null;
   location_id: string | null;
   gender: string | null;
@@ -69,6 +90,7 @@ export type Database = {
           id: string;
           tags?: string[];
           age?: number | null;
+          life_circumstances?: string[];
           location?: string | null;
           location_id?: string | null;
           gender?: string | null;

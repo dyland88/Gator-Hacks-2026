@@ -68,6 +68,7 @@ describe("profile authorization", () => {
     const { caller, chain } = setup(true);
     await caller.save({
       tags: ["Housing", "Housing"],
+      lifeCircumstances: ["Renter", "Student", "Renter"],
       age: 27,
       location: "Gainesville",
       locationId: "us:32601:0",
@@ -77,6 +78,7 @@ describe("profile authorization", () => {
       {
         id: userId,
         tags: ["Housing"],
+        life_circumstances: ["Renter", "Student"],
         age: 27,
         location: "Gainesville",
         location_id: "us:32601:0",
@@ -97,6 +99,27 @@ describe("profile authorization", () => {
         locationId: null,
         gender: null,
       } as never),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(chain.upsert).not.toHaveBeenCalled();
+  });
+
+  it("allows clearing circumstances and rejects unsupported values", async () => {
+    const { caller, chain } = setup(true);
+    const input = {
+      tags: [],
+      age: null,
+      location: null,
+      locationId: null,
+      gender: null,
+    };
+    await caller.save({ ...input, lifeCircumstances: [] });
+    expect(chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ id: userId, life_circumstances: [] }),
+      { onConflict: "id" },
+    );
+    chain.upsert.mockClear();
+    await expect(
+      caller.save({ ...input, lifeCircumstances: ["Invented"] } as never),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(chain.upsert).not.toHaveBeenCalled();
   });

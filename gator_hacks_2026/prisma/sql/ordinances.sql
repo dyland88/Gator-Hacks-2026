@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS public.ordinances (
   UNIQUE ("municipalityId", "identityKey")
 );
 
+ALTER TABLE public.ordinances ADD COLUMN IF NOT EXISTS "relevanceRules" jsonb NOT NULL DEFAULT '[]';
+
 CREATE TABLE IF NOT EXISTS public.ordinance_changes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "ordinanceId" uuid NOT NULL REFERENCES public.ordinances(id) ON DELETE RESTRICT ON UPDATE CASCADE,

@@ -10,6 +10,22 @@ Legal Seagull uses Firecrawl **Agent** (`POST /v2/agent`), not `/scrape` or `/ex
 
 The backend stores current ordinance snapshots and dated change history. The dashboard displays those records with descriptions, source links, topic tags, and segmented legislative-stage indicators. Chat retrieval and email delivery remain deferred. Guest preferences remain browser-only and do not determine monitored cities.
 
+### Age and life circumstances
+
+Feed preferences include optional age and multiple life circumstances, such as student, renter, parent or guardian, caregiver, and small-business owner. Guests save these on their device; signed-in users save them to their own profile under RLS. Clear the age field or deselect circumstances to stop using them.
+
+Ingestion extracts `relevanceRules` once per ordinance update, using explicit affected populations and inclusive age thresholds from official sources. Each rule requires a supporting excerpt contained in the change evidence and retains its source URL. All criteria within a rule must match; separate rules describe alternative groups. Missing metadata or age is treated as unknown, and age never implies a circumstance. Existing records start with no rules and acquire metadata on future ingestion updates.
+
+The browser matches these rules to the profile, displays supporting excerpts, and optionally puts matches first among loaded results while retaining other bills. Location and manually selected topics still filter the results. Matching does not establish program eligibility. Profile demographics and circumstances are not sent to Firecrawl or Gemma. The shared `matchRelevance` helper can also support future digest generation; email delivery is not implemented.
+
+Apply both additive SQL updates before deploying this feature:
+
+```text
+pnpm db:profiles
+pnpm db:ordinances
+pnpm exec prisma generate
+```
+
 ### Configuration and deployment
 
 Set these **server-only** variables locally and in the Vercel production environment:

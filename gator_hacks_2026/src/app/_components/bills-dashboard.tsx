@@ -7,6 +7,7 @@ import { OrdinanceFeed } from "~/app/_components/ordinance-feed";
 import {
   genderOptions,
   interestOptions,
+  lifeCircumstanceOptions,
   profileInputSchema,
 } from "~/lib/profile";
 import { supabase } from "~/lib/supabase-client";
@@ -18,6 +19,7 @@ type Profile = {
   age: string;
   gender: string;
   interests: string[];
+  lifeCircumstances: string[];
 };
 
 type LocationResult = {
@@ -57,6 +59,7 @@ export function BillsDashboard() {
     age: "",
     gender: "",
     interests: [],
+    lifeCircumstances: [],
   });
   const [draft, setDraft] = useState<Profile>(profile);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
@@ -95,6 +98,9 @@ export function BillsDashboard() {
           const restored = {
             ...stored.profile,
             interests: stored.profile.interests ?? [],
+            lifeCircumstances: lifeCircumstanceOptions.filter((value) =>
+              stored.profile?.lifeCircumstances?.includes(value),
+            ),
           };
           setProfile(restored);
           setDraft(restored);
@@ -123,6 +129,7 @@ export function BillsDashboard() {
           age: "",
           gender: "",
           interests: [],
+          lifeCircumstances: [],
         };
         setProfile(empty);
         setDraft(empty);
@@ -155,7 +162,8 @@ export function BillsDashboard() {
             (!stored.tags.length &&
               stored.age === null &&
               !stored.location &&
-              !stored.gender);
+              !stored.gender &&
+              !stored.life_circumstances?.length);
           if (parsed.success && isEmpty) {
             stored = await utils.client.profile.save.mutate(parsed.data);
           }
@@ -168,6 +176,7 @@ export function BillsDashboard() {
           age: stored?.age?.toString() ?? "",
           gender: stored?.gender ?? "",
           interests: stored?.tags ?? [],
+          lifeCircumstances: stored?.life_circumstances ?? [],
         };
         setProfile(restored);
         setDraft(restored);
@@ -283,6 +292,7 @@ export function BillsDashboard() {
     setProfileError(null);
     const result = profileInputSchema.safeParse({
       tags: draft.interests,
+      lifeCircumstances: draft.lifeCircumstances,
       age: draft.age ? Number(draft.age) : null,
       location: draft.location || null,
       locationId: draft.locationId === null ? null : String(draft.locationId),
@@ -541,6 +551,8 @@ export function BillsDashboard() {
             key={`${signedInId ?? "guest"}:${profile.location}:${profile.interests.join("|")}`}
             profileLocation={profile.location}
             interests={profile.interests}
+            age={profile.age ? Number(profile.age) : null}
+            lifeCircumstances={profile.lifeCircumstances}
             section={currentSection}
           />
         </main>
@@ -710,7 +722,8 @@ export function BillsDashboard() {
             {signedInId
               ? "Your choices are saved to your account."
               : "Your choices are saved on this device. Sign in to save them to your account."}{" "}
-            Your location and topics help filter the local ordinance feed.
+            Your location and topics filter the feed. Optional age and life
+            circumstances highlight source-supported relevance.
           </p>
           <div className="mt-7 grid gap-5">
             <fieldset>
@@ -853,10 +866,11 @@ export function BillsDashboard() {
               </p>
             </div>
             <label className="flex flex-col gap-2 text-[13px] font-semibold">
-              Age (optional)
+              Age for relevance (optional)
               <input
                 type="number"
                 min="1"
+                step="1"
                 max="120"
                 value={draft.age}
                 onChange={(event) =>
@@ -865,7 +879,7 @@ export function BillsDashboard() {
                     age: event.target.value,
                   }))
                 }
-                placeholder="Your age"
+                placeholder="Your age in years"
                 className="border-primary/25 bg-surface-tan/50 rounded-lg border px-4 py-3 text-[14px] font-normal focus-visible:outline-2 focus-visible:outline-offset-2"
               />
             </label>
@@ -890,6 +904,47 @@ export function BillsDashboard() {
               </select>
             </label>
           </div>
+          <fieldset className="border-primary/20 mt-6 border-t pt-5">
+            <legend className="text-[13px] font-semibold">
+              Life circumstances (optional)
+            </legend>
+            <p
+              id="circumstances-help"
+              className="text-primary/70 mt-2 text-[12px] leading-5"
+            >
+              Choose any that apply. Your age and these choices highlight bills
+              that explicitly affect people in your situation. They do not
+              determine eligibility or hide other bills. Clear any choice to
+              stop using it. These details are not sent to AI services.
+            </p>
+            <div
+              className="mt-3 flex flex-wrap gap-2"
+              aria-describedby="circumstances-help"
+            >
+              {lifeCircumstanceOptions.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={draft.lifeCircumstances.includes(value)}
+                  onClick={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      lifeCircumstances: current.lifeCircumstances.includes(
+                        value,
+                      )
+                        ? current.lifeCircumstances.filter(
+                            (item) => item !== value,
+                          )
+                        : [...current.lifeCircumstances, value],
+                    }))
+                  }
+                  className={`cursor-pointer rounded-full border px-3 py-2 text-[12px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(value) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           {profileError && (
             <p role="alert" className="mt-4 text-sm">
               {profileError}
@@ -919,6 +974,7 @@ export function BillsDashboard() {
         onAccountCreated={(userId) => {
           const parsed = profileInputSchema.safeParse({
             tags: profile.interests,
+            lifeCircumstances: profile.lifeCircumstances,
             age: profile.age ? Number(profile.age) : null,
             location: profile.location || null,
             locationId:
