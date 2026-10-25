@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { normalizeMunicipality } from "~/lib/municipality";
 import {
   legislativeSteps,
   ordinanceDate,
+  ordinanceSummary,
   ordinanceStage,
 } from "~/lib/ordinance-display";
 import { interestDescriptions, interestOptions } from "~/lib/profile";
@@ -77,13 +78,29 @@ function OrdinanceCard({
   index,
   amendments,
   matches,
+  onExplain,
+  chatPending,
 }: {
   ordinance: Ordinance;
   index: number;
   amendments: boolean;
   matches: ReturnType<typeof matchRelevance>;
+  onExplain: (ordinance: Pick<Ordinance, "id" | "name">) => void;
+  chatPending: boolean;
 }) {
   const latest = ordinance.changes[0];
+  const [expanded, setExpanded] = useState(false);
+  const prefetch = api.chat.prefetchSource.useMutation();
+  const prefetched = useRef(false);
+
+  function toggleExpanded() {
+    if (!expanded && !prefetched.current) {
+      prefetched.current = true;
+      prefetch.mutate({ ordinanceId: ordinance.id });
+    }
+    setExpanded((value) => !value);
+  }
+
   return (
     <article
       className="ordinance-card border-primary/20 rounded-[20px] border p-5 sm:p-6"
@@ -102,9 +119,21 @@ function OrdinanceCard({
       <h2 className="font-display text-[25px] leading-[1.15] tracking-[-0.015em] sm:text-[29px]">
         {ordinance.name}
       </h2>
-      <p className="text-primary/80 mt-3 text-[14px] leading-6 whitespace-pre-line">
-        {ordinance.description}
+      <p
+        className={`text-primary/80 mt-3 text-[14px] leading-6 whitespace-pre-line ${expanded ? "" : "line-clamp-3"}`}
+      >
+        {ordinanceSummary(ordinance)}
       </p>
+      {ordinanceSummary(ordinance).length > 200 && (
+        <button
+          type="button"
+          onClick={toggleExpanded}
+          aria-expanded={expanded}
+          className="text-primary mt-1 cursor-pointer text-[12px] font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          {expanded ? "Show less" : "Read more"}
+        </button>
+      )}
       {amendments && latest && (
         <p className="border-primary/30 text-primary/75 mt-3 border-l-2 pl-3 text-[13px] leading-5">
           <span className="font-semibold">Latest amendment: </span>
@@ -183,6 +212,14 @@ function OrdinanceCard({
           Official source ↗
         </a>
       </div>
+      <button
+        type="button"
+        onClick={() => onExplain(ordinance)}
+        disabled={chatPending}
+        className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui mt-5 cursor-pointer rounded-full border px-4 py-2.5 text-[11px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50"
+      >
+        Ask Legal Seagull ↗
+      </button>
     </article>
   );
 }
@@ -193,12 +230,16 @@ export function OrdinanceFeed({
   section,
   age,
   lifeCircumstances,
+  onExplain,
+  chatPending,
 }: {
   profileLocation: string;
   interests: string[];
   section: "Bills" | "Amendments";
   age: number | null;
   lifeCircumstances: string[];
+  onExplain: (ordinance: Pick<Ordinance, "id" | "name">) => void;
+  chatPending: boolean;
 }) {
   const [chosenLocation, setChosenLocation] = useState<string | null>(null);
   const [chosenTopics, setChosenTopics] = useState<Topic[] | null>(null);
@@ -412,6 +453,8 @@ export function OrdinanceFeed({
                 index={index}
                 amendments={section === "Amendments"}
                 matches={matches}
+                onExplain={onExplain}
+                chatPending={chatPending}
               />
             ))}
           </div>

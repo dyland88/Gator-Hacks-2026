@@ -38,6 +38,16 @@ type ChatMessage = {
 };
 
 type ChatPayloadMessage = Pick<ChatMessage, "role" | "content">;
+type ChatRequest = { messages: ChatPayloadMessage[]; ordinanceId?: string };
+type Chat = {
+  title: string | null;
+  messages: ChatMessage[];
+  updatedAt?: number;
+};
+
+const GENERAL_CHAT = "general";
+const NO_MESSAGES: ChatMessage[] = [];
+const CHAT_STORAGE_KEY = "legal-seagull-chats";
 
 function locationLabel(place: LocationResult) {
   const placeName = [place.name, place.admin1, place.country]
@@ -53,7 +63,10 @@ export function BillsDashboard() {
   const signupDialogRef = useRef<HTMLDialogElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const lastChatRequestRef = useRef<ChatPayloadMessage[] | null>(null);
+  const lastChatRequestRef = useRef<{
+    request: ChatRequest;
+    key: string;
+  } | null>(null);
   const [profile, setProfile] = useState<Profile>({
     location: "",
     locationId: null,
@@ -76,10 +89,77 @@ export function BillsDashboard() {
   const [lookupStatus, setLookupStatus] = useState<
     "idle" | "loading" | "empty" | "error"
   >("idle");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chats, setChats] = useState<Record<string, Chat>>({});
+  const [activeKey, setActiveKey] = useState(GENERAL_CHAT);
   const [chatDraft, setChatDraft] = useState("");
-  const [chatError, setChatError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
+  const chatsLoaded = useRef(false);
+  const activeChat = chats[activeKey];
+  const chatMessages = activeChat?.messages ?? NO_MESSAGES;
+  const historyEntries = Object.entries(chats)
+    .filter(([, chat]) => chat.messages.length > 0)
+    .sort(([, a], [, b]) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  const chatErrorMessage =
+    chatError?.key === activeKey ? chatError.message : null;
+  const selectedOrdinance =
+    activeKey === GENERAL_CHAT
+      ? null
+      : { id: activeKey, name: activeChat?.title ?? "this ordinance" };
+
+  function updateChat(
+    key: string,
+    update: (messages: ChatMessage[]) => ChatMessage[],
+  ) {
+    setChats((current) => ({
+      ...current,
+      [key]: {
+        title: current[key]?.title ?? null,
+        messages: update(current[key]?.messages ?? []),
+        updatedAt: Date.now(),
+      },
+    }));
+  }
+  const [chatOpen, setChatOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(CHAT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as {
+          chats?: Record<string, Chat>;
+          activeKey?: string;
+        };
+        if (parsed.chats) setChats(parsed.chats);
+        if (parsed.activeKey) setActiveKey(parsed.activeKey);
+      }
+    } catch {}
+    chatsLoaded.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!chatsLoaded.current) return;
+    try {
+      window.sessionStorage.setItem(
+        CHAT_STORAGE_KEY,
+        JSON.stringify({ chats, activeKey }),
+      );
+    } catch {}
+  }, [chats, activeKey]);
+  const [chatBusy, setChatBusy] = useState(false);
   const chatMutation = api.chat.send.useMutation();
+
+  useEffect(() => {
+    if (!chatOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setChatOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chatOpen]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("auth") === "error") {
@@ -152,7 +232,8 @@ export function BillsDashboard() {
         setDraft(empty);
         setProfileError(null);
         setProfileLoading(false);
-        setChatMessages([]);
+        setChats({});
+        setActiveKey(GENERAL_CHAT);
         setChatError(null);
       }
     });
@@ -289,7 +370,7 @@ export function BillsDashboard() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages, chatMutation.isPending, chatError]);
+  }, [chatMessages, chatBusy, chatErrorMessage]);
 
   function openDetails() {
     setDraft(profile);
@@ -348,37 +429,54 @@ export function BillsDashboard() {
     dialogRef.current?.close();
   }
 
-  function runChat(messages: ChatPayloadMessage[]) {
-    const payload = trimChatHistory(messages);
-    lastChatRequestRef.current = payload;
+  async function runChat(request: ChatRequest, key: string) {
+    const payload = { ...request, messages: trimChatHistory(request.messages) };
+    lastChatRequestRef.current = { request: payload, key };
     setChatError(null);
-    chatMutation.mutate(
-      { messages: payload },
-      {
-        onSuccess(data) {
-          setChatMessages((current) => [
+    setChatBusy(true);
+    const replyId = crypto.randomUUID();
+    let started = false;
+    try {
+      const stream = await chatMutation.mutateAsync(payload);
+      for await (const text of stream) {
+        if (!started) {
+          started = true;
+          updateChat(key, (current) => [
             ...current,
-            {
-              id: crypto.randomUUID(),
-              role: data.message.role,
-              content: data.message.content,
-            },
+            { id: replyId, role: "model", content: text },
           ]);
-        },
-        onError(error) {
-          setChatError(
-            error.message ||
-            "Legal Seagull could not answer right now. Please try again.",
+        } else {
+          updateChat(key, (current) =>
+            current.map((message) =>
+              message.id === replyId
+                ? { ...message, content: message.content + text }
+                : message,
+            ),
           );
-        },
-      },
-    );
+        }
+      }
+    } catch (error) {
+      if (started) {
+        updateChat(key, (current) =>
+          current.filter((message) => message.id !== replyId),
+        );
+      }
+      setChatError({
+        key,
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "Legal Seagull could not answer right now. Please try again.",
+      });
+    } finally {
+      setChatBusy(false);
+    }
   }
 
   function sendChatMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const content = chatDraft.trim();
-    if (!content || chatMutation.isPending) return;
+    if (!content || chatBusy) return;
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -386,22 +484,52 @@ export function BillsDashboard() {
       content,
     };
     const nextMessages = [...chatMessages, userMessage];
-    setChatMessages(nextMessages);
+    updateChat(activeKey, () => nextMessages);
     setChatDraft("");
-    runChat(nextMessages);
+    void runChat(
+      {
+        messages: nextMessages,
+        ordinanceId: activeKey === GENERAL_CHAT ? undefined : activeKey,
+      },
+      activeKey,
+    );
+  }
+
+  function explainOrdinance(ordinance: { id: string; name: string }) {
+    setChatOpen(true);
+    setHistoryOpen(false);
+    if (chats[ordinance.id]) {
+      setActiveKey(ordinance.id);
+      return;
+    }
+    if (chatBusy) return;
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: `Explain ${ordinance.name} in plain language. What would it change, who could it affect, and what is its reported status?`,
+    };
+    setChats((current) => ({
+      ...current,
+      [ordinance.id]: {
+        title: ordinance.name,
+        messages: [message],
+        updatedAt: Date.now(),
+      },
+    }));
+    setActiveKey(ordinance.id);
+    void runChat(
+      { messages: [message], ordinanceId: ordinance.id },
+      ordinance.id,
+    );
   }
 
   function retryChat() {
-    if (lastChatRequestRef.current && !chatMutation.isPending) {
-      runChat(lastChatRequestRef.current);
+    if (lastChatRequestRef.current && !chatBusy) {
+      void runChat(
+        lastChatRequestRef.current.request,
+        lastChatRequestRef.current.key,
+      );
     }
-  }
-
-  function clearChat() {
-    setChatMessages([]);
-    setChatDraft("");
-    setChatError(null);
-    lastChatRequestRef.current = null;
   }
 
   return (
@@ -414,7 +542,7 @@ export function BillsDashboard() {
         backgroundSize: "22px 22px",
       }}
     >
-      <header className="bg-primary text-surface-cream flex h-16 flex-none items-center justify-between px-6 sm:px-10">
+      <header className="bg-primary text-surface-cream fixed inset-x-0 top-0 z-[60] flex h-16 items-center justify-between px-6 sm:px-10">
         <div className="flex items-center gap-4">
           <Image
             src="/images/seagull.png"
@@ -436,8 +564,11 @@ export function BillsDashboard() {
           {signedInEmail ? "Account" : "Sign in"}
         </button>
       </header>
+      <div className="h-16 flex-none" aria-hidden="true" />
 
-      <div className="mx-auto grid w-full max-w-[1440px] flex-1 gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_350px] lg:px-12">
+      <div
+        className={`mx-auto w-full max-w-[1440px] flex-1 px-6 py-10 transition-[padding] duration-500 ease-out sm:px-10 lg:pl-12 ${chatOpen ? "lg:pr-[432px]" : "lg:pr-12"}`}
+      >
         <main className="min-w-0">
           {authError && (
             <p
@@ -558,11 +689,31 @@ export function BillsDashboard() {
             age={profile.age ? Number(profile.age) : null}
             lifeCircumstances={profile.lifeCircumstances}
             section={currentSection}
+            onExplain={explainOrdinance}
+            chatPending={chatBusy}
           />
         </main>
 
+        <button
+          type="button"
+          onClick={() => setChatOpen((open) => !open)}
+          aria-expanded={chatOpen}
+          aria-controls="chat-panel"
+          className={`bg-primary text-surface-cream font-mono-ui fixed top-1/2 z-50 -translate-y-1/2 cursor-pointer rounded-l-2xl px-3 py-5 text-[11px] tracking-[0.12em] uppercase shadow-lg transition-[right,opacity] duration-500 ease-out [writing-mode:vertical-rl] focus-visible:outline-2 focus-visible:outline-offset-2 ${chatOpen ? "right-[min(400px,100vw)] max-lg:pointer-events-none max-lg:opacity-0" : "right-0 hover:pr-4"}`}
+        >
+          {chatOpen ? "Close chat" : "Ask Legal Seagull"}
+        </button>
+
+        <div
+          aria-hidden="true"
+          onClick={() => setChatOpen(false)}
+          className={`bg-primary/30 fixed inset-x-0 top-16 bottom-0 z-30 transition-opacity duration-300 lg:hidden ${chatOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        />
+
         <aside
-          className="border-primary/25 bg-surface-tan flex min-h-[500px] flex-col overflow-hidden rounded-[22px] border lg:sticky lg:top-8 lg:h-[calc(100vh-128px)]"
+          id="chat-panel"
+          inert={!chatOpen}
+          className={`border-primary/25 bg-surface-tan fixed top-16 right-0 bottom-0 z-40 flex w-full max-w-[400px] flex-col overflow-hidden border-l shadow-2xl transition-transform duration-500 ease-out ${chatOpen ? "translate-x-0" : "translate-x-full"}`}
           aria-label="AI chat workspace"
         >
           <div className="border-primary/20 flex items-center gap-3 border-b px-6 py-5">
@@ -582,131 +733,183 @@ export function BillsDashboard() {
               <h2 className="font-display text-[22px] leading-tight">
                 Ask Legal Seagull
               </h2>
-              <p className="font-mono-ui text-primary/60 text-[10px] tracking-[0.1em] uppercase">
-                AI chat workspace
+              <p
+                title={selectedOrdinance?.name}
+                className="font-mono-ui text-primary/60 truncate text-[10px] tracking-[0.1em] uppercase"
+              >
+                {selectedOrdinance
+                  ? `Explaining ${selectedOrdinance.name}`
+                  : "AI chat workspace"}
               </p>
             </div>
-            {chatMessages.length > 0 && (
-              <button
-                type="button"
-                onClick={clearChat}
-                disabled={chatMutation.isPending}
-                className="font-mono-ui text-primary/65 hover:text-primary cursor-pointer text-[9px] tracking-[0.1em] uppercase disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          {chatMessages.length === 0 && !chatMutation.isPending ? (
-            <div className="flex flex-1 flex-col justify-center px-7 py-10 text-center">
-              <div
-                className="border-primary/20 mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full border"
-                aria-hidden="true"
-              >
-                <svg width="25" height="25" viewBox="0 0 25 25" fill="none">
-                  <path
-                    d="M5 6.5h15v11H10l-5 3v-14Z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M9 11h7M9 14h5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-display text-[25px]">
-                Make sense of what matters.
-              </h3>
-              <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[13px] leading-6">
-                Ask about legislation, civic processes, and what a bill could
-                mean in plain language.
-              </p>
-            </div>
-          ) : (
-            <div
-              role="log"
-              aria-live="polite"
-              aria-label="Conversation with Legal Seagull"
-              className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5"
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((open) => !open)}
+              aria-expanded={historyOpen}
+              aria-controls="chat-history"
+              className="font-mono-ui text-primary/65 hover:text-primary cursor-pointer text-[10px] tracking-[0.1em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[13px] leading-5 whitespace-pre-wrap ${message.role === "user"
-                      ? "bg-primary text-surface-cream rounded-br-sm"
-                      : "bg-surface-cream border-primary/15 rounded-bl-sm border"
-                      }`}
-                  >
-                    {message.content}
-                  </div>
-                </div>
-              ))}
-              {chatMutation.isPending && (
-                <div
-                  className="flex justify-start"
-                  aria-label="Legal Seagull is thinking"
-                >
-                  <div className="bg-surface-cream border-primary/15 flex gap-1 rounded-[16px] rounded-bl-sm border px-4 py-4">
-                    {[0, 1, 2].map((dot) => (
-                      <span
-                        key={dot}
-                        className="bg-primary/55 chat-thinking-dot h-1.5 w-1.5 rounded-full"
-                        style={{ animationDelay: `${dot * 160}ms` }}
-                      />
+              {historyOpen ? "Back" : "History"}
+            </button>
+          </div>
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {historyOpen && (
+              <div
+                id="chat-history"
+                className="bg-surface-tan absolute inset-0 z-10 flex flex-col overflow-y-auto px-5 py-5"
+              >
+                <p className="font-mono-ui text-primary/60 mb-3 text-[10px] tracking-[0.1em] uppercase">
+                  Chat history
+                </p>
+                {historyEntries.length === 0 ? (
+                  <p className="text-primary/65 text-[13px] leading-6">
+                    Your chats will appear here. Each ordinance keeps its own
+                    conversation.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2.5">
+                    {historyEntries.map(([key, chat]) => (
+                      <li key={key}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveKey(key);
+                            setHistoryOpen(false);
+                          }}
+                          aria-current={key === activeKey ? "true" : undefined}
+                          className={`w-full cursor-pointer rounded-[14px] border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${key === activeKey ? "border-primary bg-surface-cream" : "border-primary/20 hover:border-primary/50 hover:bg-surface-cream/60"}`}
+                        >
+                          <span className="font-display line-clamp-2 text-[15px] leading-tight">
+                            {chat.title ?? "General questions"}
+                          </span>
+                          <span className="text-primary/65 mt-1 line-clamp-2 text-[12px] leading-5">
+                            {chat.messages.at(-1)?.content}
+                          </span>
+                          <span className="font-mono-ui text-primary/50 mt-1.5 block text-[9px] tracking-[0.1em] uppercase">
+                            {chat.messages.length}{" "}
+                            {chat.messages.length === 1
+                              ? "message"
+                              : "messages"}
+                          </span>
+                        </button>
+                      </li>
                     ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            {chatMessages.length === 0 && !chatBusy ? (
+              <div className="flex flex-1 flex-col justify-center px-7 py-10 text-center">
+                <div
+                  className="border-primary/20 mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full border"
+                  aria-hidden="true"
+                >
+                  <svg width="25" height="25" viewBox="0 0 25 25" fill="none">
+                    <path
+                      d="M5 6.5h15v11H10l-5 3v-14Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9 11h7M9 14h5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+                <h3 className="font-display text-[25px]">
+                  Make sense of what matters.
+                </h3>
+                <p className="text-primary/65 mx-auto mt-3 max-w-[250px] text-[13px] leading-6">
+                  Ask about legislation, civic processes, and what a bill could
+                  mean in plain language.
+                </p>
+              </div>
+            ) : (
+              <div
+                role="log"
+                aria-live="polite"
+                aria-label="Conversation with Legal Seagull"
+                className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-5"
+              >
+                {chatMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[88%] rounded-[16px] px-4 py-3 text-left text-[13px] leading-5 whitespace-pre-wrap ${
+                        message.role === "user"
+                          ? "bg-primary text-surface-cream rounded-br-sm"
+                          : "bg-surface-cream border-primary/15 rounded-bl-sm border"
+                      }`}
+                    >
+                      <LinkedText text={message.content} />
+                    </div>
                   </div>
+                ))}
+                {chatBusy && chatMessages.at(-1)?.role === "user" && (
+                  <div
+                    className="flex justify-start"
+                    aria-label="Legal Seagull is thinking"
+                  >
+                    <div className="bg-surface-cream border-primary/15 flex gap-1 rounded-[16px] rounded-bl-sm border px-4 py-4">
+                      {[0, 1, 2].map((dot) => (
+                        <span
+                          key={dot}
+                          className="bg-primary/55 chat-thinking-dot h-1.5 w-1.5 rounded-full"
+                          style={{ animationDelay: `${dot * 160}ms` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            )}
+            <div className="border-primary/20 border-t p-4">
+              {chatErrorMessage && (
+                <div
+                  role="alert"
+                  className="border-primary/20 bg-surface-cream mb-3 rounded-xl border px-3 py-2.5 text-[11px] leading-4"
+                >
+                  <p>{chatErrorMessage}</p>
+                  <button
+                    type="button"
+                    onClick={retryChat}
+                    disabled={chatBusy}
+                    className="font-mono-ui mt-2 cursor-pointer text-[9px] tracking-[0.1em] uppercase underline underline-offset-2 disabled:cursor-not-allowed"
+                  >
+                    Try again
+                  </button>
                 </div>
               )}
-              <div ref={chatEndRef} />
-            </div>
-          )}
-          <div className="border-primary/20 border-t p-4">
-            {chatError && (
-              <div
-                role="alert"
-                className="border-primary/20 bg-surface-cream mb-3 rounded-xl border px-3 py-2.5 text-[11px] leading-4"
+              <form
+                onSubmit={sendChatMessage}
+                className="border-primary/25 bg-surface-cream flex items-center gap-2 rounded-[14px] border p-2"
               >
-                <p>{chatError}</p>
+                <input
+                  type="text"
+                  value={chatDraft}
+                  maxLength={2_000}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  disabled={chatBusy}
+                  placeholder="Ask Legal Seagull…"
+                  aria-label="Message Legal Seagull"
+                  className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
+                />
                 <button
-                  type="button"
-                  onClick={retryChat}
-                  disabled={chatMutation.isPending}
-                  className="font-mono-ui mt-2 cursor-pointer text-[9px] tracking-[0.1em] uppercase underline underline-offset-2 disabled:cursor-not-allowed"
+                  type="submit"
+                  disabled={!chatDraft.trim() || chatBusy}
+                  aria-label="Send message"
+                  className="bg-primary text-surface-cream flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  Try again
+                  ↗
                 </button>
-              </div>
-            )}
-            <form
-              onSubmit={sendChatMessage}
-              className="border-primary/25 bg-surface-cream flex items-center gap-2 rounded-[14px] border p-2"
-            >
-              <input
-                type="text"
-                value={chatDraft}
-                maxLength={2_000}
-                onChange={(event) => setChatDraft(event.target.value)}
-                disabled={chatMutation.isPending}
-                placeholder="Ask Legal Seagull…"
-                aria-label="Message Legal Seagull"
-                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
-              />
-              <button
-                type="submit"
-                disabled={!chatDraft.trim() || chatMutation.isPending}
-                aria-label="Send message"
-                className="bg-primary text-surface-cream flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                ↗
-              </button>
-            </form>
+              </form>
+            </div>
           </div>
         </aside>
       </div>
@@ -755,8 +958,8 @@ export function BillsDashboard() {
                           ...current,
                           interests: current.interests.includes(interest)
                             ? current.interests.filter(
-                              (item) => item !== interest,
-                            )
+                                (item) => item !== interest,
+                              )
                             : [...current.interests, interest],
                         }))
                       }
@@ -922,8 +1125,8 @@ export function BillsDashboard() {
                         value,
                       )
                         ? current.lifeCircumstances.filter(
-                          (item) => item !== value,
-                        )
+                            (item) => item !== value,
+                          )
                         : [...current.lifeCircumstances, value],
                     }))
                   }
@@ -1000,4 +1203,24 @@ function trimChatHistory(messages: ChatPayloadMessage[]) {
   }
 
   return payload;
+}
+
+function LinkedText({ text }: { text: string }) {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+    if (index % 2 === 0) return part;
+    const url = part.replace(/[.,;:!?)]+$/, "");
+    return (
+      <span key={index}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="break-all underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          {url}
+        </a>
+        {part.slice(url.length)}
+      </span>
+    );
+  });
 }
