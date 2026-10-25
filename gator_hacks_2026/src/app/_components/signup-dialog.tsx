@@ -250,7 +250,10 @@ export function SignupDialog({
         </form>
       )}
       {error && (
-        <p role="alert" className="mt-4 text-[12px] leading-5">
+        <p
+          role="alert"
+          className="border-primary/25 bg-primary/5 mt-4 rounded-xl border px-4 py-3 text-[16px] leading-6 font-semibold"
+        >
           {error}
         </p>
       )}
@@ -258,7 +261,7 @@ export function SignupDialog({
         type="button"
         disabled={busy}
         onClick={() => dialogRef.current?.close()}
-        className="font-mono-ui mt-5 w-full cursor-pointer py-2 text-[11px] tracking-[0.08em] uppercase"
+        className="font-mono-ui border-primary/35 hover:bg-surface-tan/50 mt-5 w-full cursor-pointer rounded-full border px-6 py-3 text-[11px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {signedInEmail ? "Close" : "Continue as guest"}
       </button>

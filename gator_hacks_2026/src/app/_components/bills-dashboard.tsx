@@ -46,7 +46,7 @@ function locationLabel(place: LocationResult) {
   return place.postcode ? `${place.postcode} — ${placeName}` : placeName;
 }
 
-const sections = ["Bills", "Amendments", "Elected officials"] as const;
+const sections = ["Bills", "Amendments"] as const;
 
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -70,7 +70,8 @@ export function BillsDashboard() {
   const [authError, setAuthError] = useState<string | null>(null);
   const utils = api.useUtils();
   const saveProfileMutation = api.profile.save.useMutation();
-  const [sectionIndex, setSectionIndex] = useState(0);
+  const [currentSection, setCurrentSection] =
+    useState<(typeof sections)[number]>("Bills");
   const [locations, setLocations] = useState<LocationResult[]>([]);
   const [lookupStatus, setLookupStatus] = useState<
     "idle" | "loading" | "empty" | "error"
@@ -79,12 +80,6 @@ export function BillsDashboard() {
   const [chatDraft, setChatDraft] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
   const chatMutation = api.chat.send.useMutation();
-  const currentSection = sections[sectionIndex] ?? sections[0];
-  const previousSection =
-    sections[(sectionIndex - 1 + sections.length) % sections.length] ??
-    sections[0];
-  const nextSection =
-    sections[(sectionIndex + 1) % sections.length] ?? sections[0];
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("auth") === "error") {
@@ -453,64 +448,7 @@ export function BillsDashboard() {
               <p className="font-mono-ui text-[11px] tracking-[0.14em] uppercase">
                 Your legislative feed
               </p>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="flex w-9 flex-col" aria-label="Switch views">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSectionIndex(
-                        (current) =>
-                          (current - 1 + sections.length) % sections.length,
-                      )
-                    }
-                    aria-label={`Switch to ${previousSection}`}
-                    title={`Switch to ${previousSection}`}
-                    className="text-primary hover:bg-surface-tan flex h-5 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
-                  >
-                    <svg
-                      width="18"
-                      height="12"
-                      viewBox="0 0 18 12"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="m3 9 6-6 6 6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSectionIndex(
-                        (current) => (current + 1) % sections.length,
-                      )
-                    }
-                    aria-label={`Switch to ${nextSection}`}
-                    title={`Switch to ${nextSection}`}
-                    className="text-primary hover:bg-surface-tan flex h-5 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
-                  >
-                    <svg
-                      width="18"
-                      height="12"
-                      viewBox="0 0 18 12"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="m3 3 6 6 6-6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
+              <div className="relative mt-3 inline-flex items-center gap-3 rounded-lg focus-within:outline-2 focus-within:outline-offset-4">
                 <h1 className="font-display text-primary text-[42px] leading-none font-semibold tracking-[-0.02em]">
                   <span
                     key={currentSection}
@@ -519,11 +457,41 @@ export function BillsDashboard() {
                     {currentSection} for you
                   </span>
                 </h1>
+                <svg
+                  width="20"
+                  height="14"
+                  viewBox="0 0 20 14"
+                  fill="none"
+                  aria-hidden="true"
+                  className="shrink-0"
+                >
+                  <path
+                    d="m4 4 6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <select
+                  aria-label="Choose feed type"
+                  value={currentSection}
+                  onChange={(event) =>
+                    setCurrentSection(
+                      event.target.value === "Amendments"
+                        ? "Amendments"
+                        : "Bills",
+                    )
+                  }
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                >
+                  {sections.map((section) => (
+                    <option key={section} value={section}>
+                      {section}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <p className="font-mono-ui text-primary/60 mt-2 pl-12 text-[11px] tracking-[0.08em]">
-                {sectionIndex + 1} / {sections.length} · Use the arrows to
-                switch views
-              </p>
             </div>
             <button
               type="button"
