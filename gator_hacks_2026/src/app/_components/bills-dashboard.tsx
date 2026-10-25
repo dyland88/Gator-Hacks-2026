@@ -46,13 +46,6 @@ const GENERAL_CHAT = "general";
 const NO_MESSAGES: ChatMessage[] = [];
 const CHAT_STORAGE_KEY = "legal-seagull-chats";
 
-function locationLabel(place: LocationResult) {
-  const placeName = [place.name, place.admin1, place.country]
-    .filter(Boolean)
-    .join(", ");
-  return place.postcode ? `${place.postcode} — ${placeName}` : placeName;
-}
-
 export function BillsDashboard() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const signupDialogRef = useRef<HTMLDialogElement>(null);
@@ -646,7 +639,7 @@ export function BillsDashboard() {
           onClick={() => setChatOpen((open) => !open)}
           aria-expanded={chatOpen}
           aria-controls="chat-panel"
-          className={`bg-primary text-surface-cream font-mono-ui fixed top-1/2 z-50 -translate-y-1/2 cursor-pointer rounded-l-2xl px-3 py-5 text-[14px] tracking-[0.12em] uppercase shadow-lg transition-[right,opacity] duration-500 ease-out [writing-mode:vertical-rl] focus-visible:outline-2 focus-visible:outline-offset-2 ${chatOpen ? "right-[min(400px,100vw)] max-lg:pointer-events-none max-lg:opacity-0" : "right-0 hover:pr-4"}`}
+          className={`bg-primary text-surface-cream font-mono-ui fixed top-1/2 z-50 -translate-y-1/2 cursor-pointer rounded-l-2xl px-3 py-5 text-[14px] tracking-[0.12em] uppercase shadow-lg transition-[right,opacity] duration-500 ease-out [writing-mode:vertical-rl] focus-visible:outline-2 focus-visible:outline-offset-2 ${chatOpen ? "right-[min(500px,100vw)] max-lg:pointer-events-none max-lg:opacity-0" : "right-0 hover:pr-4"}`}
         >
           {chatOpen ? "Close chat" : "Ask Legal Seagull"}
         </button>
@@ -660,7 +653,7 @@ export function BillsDashboard() {
         <aside
           id="chat-panel"
           inert={!chatOpen}
-          className={`border-primary/25 bg-surface-tan fixed top-16 right-0 bottom-0 z-40 flex w-full max-w-[400px] flex-col overflow-hidden border-l shadow-2xl transition-transform duration-500 ease-out ${chatOpen ? "translate-x-0" : "translate-x-full"}`}
+          className={`border-primary/25 bg-surface-tan fixed top-16 right-0 bottom-0 z-40 flex w-full max-w-[500px] flex-col overflow-hidden border-l shadow-2xl transition-transform duration-500 ease-out ${chatOpen ? "translate-x-0" : "translate-x-full"}`}
           aria-label="AI chat workspace"
         >
           <div className="border-primary/20 flex items-center gap-3 border-b px-6 py-5">
@@ -864,7 +857,7 @@ export function BillsDashboard() {
       <dialog
         ref={dialogRef}
         aria-labelledby="profile-title"
-        className="bg-surface-cream text-primary font-body border-primary/20 m-auto max-h-[90vh] w-[min(92vw,560px)] overflow-y-auto rounded-[24px] border p-0 shadow-2xl backdrop:bg-gray-500/65"
+        className="bg-surface-cream text-primary font-body border-primary/20 m-auto max-h-[90vh] w-[min(92vw,500px)] overflow-y-auto rounded-[24px] border p-0 shadow-2xl backdrop:bg-gray-500/65"
       >
         <form onSubmit={saveProfile} className="p-7 sm:p-9">
           <p className="font-mono-ui text-[14px] tracking-[0.14em] uppercase">
