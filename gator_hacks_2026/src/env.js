@@ -14,6 +14,8 @@ export const env = createEnv({
     FIRECRAWL_WEBHOOK_SECRET: z.string().min(1).optional(),
     CRON_SECRET: z.string().min(16).optional(),
     APP_URL: z.string().url().optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.string().min(1).optional(),
     FIRECRAWL_AGENT_MAX_CREDITS: z.coerce
       .number()
       .int()
@@ -47,6 +49,8 @@ export const env = createEnv({
     FIRECRAWL_WEBHOOK_SECRET: process.env.FIRECRAWL_WEBHOOK_SECRET,
     CRON_SECRET: process.env.CRON_SECRET,
     APP_URL: process.env.APP_URL,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
     FIRECRAWL_AGENT_MAX_CREDITS: process.env.FIRECRAWL_AGENT_MAX_CREDITS,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

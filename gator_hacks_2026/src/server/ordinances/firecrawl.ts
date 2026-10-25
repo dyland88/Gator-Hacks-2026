@@ -4,12 +4,9 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { type MunicipalityIdentity } from "~/lib/municipality";
-import {
-  interestDescriptions,
-  interestOptions,
-  lifeCircumstanceOptions,
-} from "~/lib/profile";
-import { agentJsonSchema } from "./schema";
+import { interestDescriptions, interestOptions } from "~/lib/profile";
+import { type LifeCircumstanceOption } from "./life-circumstances";
+import { buildAgentJsonSchema } from "./schema";
 
 export class FirecrawlError extends Error {
   constructor(
@@ -77,6 +74,7 @@ type AgentWindow = {
   cities: MunicipalityIdentity[];
   windowStart: Date;
   windowEnd: Date;
+  lifeCircumstances: LifeCircumstanceOption[];
 };
 
 export function buildAgentPrompt(input: AgentWindow) {
@@ -90,7 +88,7 @@ export function buildAgentPrompt(input: AgentWindow) {
     "Return one cities entry per municipality with coverage complete, partial or unavailable, and sourcesChecked. Complete means the available official activity sources were checked for this window, not guaranteed exhaustive coverage. No findings means changes: []; blocked or missing sources mean unavailable or partial, never complete.",
     "Each change must identify an ordinance and its dated activity with a short evidenceExcerpt supporting its date, description and stage. Use the stable ordinance detail URL for sourceUrl and the supporting official evidence URL for evidenceUrl, both on sourcesChecked origins. Prefer official ordinance numbers for sourceIdentifier; null if absent. Never invent identifiers, dates, stages, evidence, or activity.",
     "Include direct agenda, minutes, transcript, and attachment URLs in sourcesChecked, including document API URLs when a legislative portal serves files from a separate hostname.",
-    `Extract relevanceRules only for populations explicitly affected in the official source. Allowed lifeCircumstances: ${lifeCircumstanceOptions.join(", ")}. Use inclusive ageMin/ageMax only for explicit age thresholds; otherwise null. Do not infer age from student or retired status, or affected groups from broad topics. Each rule describes one group; ALL its criteria apply together. Use separate rules for alternative groups. Each rule needs a verbatim supporting evidenceExcerpt also included within the change's evidenceExcerpt, from evidenceUrl. Return [] when unknown; do not guess or assess individual eligibility. No user demographics are supplied.`,
+    `Tag each ordinance internally with the life circumstances it plausibly affects, inferred from what the change regulates or provides, using only these keys (key: meaning): ${input.lifeCircumstances.map((circumstance) => `${circumstance.key}: ${circumstance.description}`).join("; ")}. Multiple circumstances may apply. These tags are internal and never shown to users. The source does not need to name the group; infer from the text and treat tags as a general suggestion, not a legal determination. Use inclusive ageMin/ageMax only for explicit age thresholds; otherwise null. Each rule describes one group; ALL its criteria apply together. Use separate rules for alternative groups. Each rule's evidenceExcerpt is a short quote from the change's text that best supports the inference, and evidenceUrl is the source it came from. Return [] when the text gives no reasonable basis; do not assess individual eligibility. No user demographics are supplied.`,
     "description is a one to two sentence plain-language summary of what the ordinance does and who or what it affects. It must add information beyond the title: never restate, paraphrase, or lightly reword the title, and do not begin by repeating the title's verb and subject. Explain the practical effect, such as what changes, for whom, and any conditions or amounts stated in the source.",
     "Use the official ordinance title verbatim for name and keep it stable across lifecycle updates. Do not paraphrase it or append status labels or meeting dates. Preserve years and numbers that are part of the official title. Names are used to reconcile records within the same municipality when identifiers are missing.",
     `Categorize every ordinance using ONLY this predetermined topic taxonomy, which is also used for user preferences and feed filters: ${interestOptions.map((topic) => `${topic}: ${interestDescriptions[topic]}`).join("; ")}. Return exact topic names in topics, without duplicates. Assign all directly relevant topics supported by the ordinance text. Do not invent new tags or infer a user's interests; return [] if no topic applies.`,
@@ -104,7 +102,9 @@ async function submitAgent(
 ) {
   const result = await request("", {
     prompt: buildAgentPrompt(input),
-    schema: agentJsonSchema,
+    schema: buildAgentJsonSchema(
+      input.lifeCircumstances.map((circumstance) => circumstance.key),
+    ),
     maxCredits: env.FIRECRAWL_AGENT_MAX_CREDITS,
     ...(webhook ? { webhook } : {}),
   });

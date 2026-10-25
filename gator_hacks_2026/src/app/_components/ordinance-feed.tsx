@@ -10,7 +10,6 @@ import {
   ordinanceStage,
 } from "~/lib/ordinance-display";
 import { interestDescriptions, interestOptions } from "~/lib/profile";
-import { matchRelevance } from "~/lib/relevance";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/react";
 
@@ -28,12 +27,12 @@ export function OrdinanceProgress({
   return (
     <div className="border-primary/15 mt-6 border-t pt-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono-ui text-[10px] tracking-[0.12em] uppercase">
+        <p className="font-mono-ui text-[14px] tracking-[0.12em] uppercase">
           Legislative stage
         </p>
         <span
           title={originalStage}
-          className={`rounded-full border px-2.5 py-1 text-[11px] ${current.ended ? "border-primary/35 bg-primary/10 text-primary" : "border-primary/20 text-primary/80"}`}
+          className={`rounded-full border px-2.5 py-1 text-[14px] ${current.ended ? "border-primary/35 bg-primary/10 text-primary" : "border-primary/20 text-primary/80"}`}
         >
           {current.label}
         </span>
@@ -52,7 +51,7 @@ export function OrdinanceProgress({
               className={`mb-2 block h-1.5 rounded-sm ${index === current.index ? "bg-primary ring-primary/25 ring-offset-surface-cream ring-1 ring-offset-2" : current.index > index ? "bg-primary/45" : "bg-primary/10"}`}
             />
             <span
-              className={`block text-[10px] sm:text-[11px] ${index === current.index ? "text-primary font-semibold" : "text-primary/60"}`}
+              className={`block text-[14px] sm:text-[14px] ${index === current.index ? "text-primary font-semibold" : "text-primary/60"}`}
             >
               {step.label}
             </span>
@@ -60,12 +59,12 @@ export function OrdinanceProgress({
         ))}
       </ol>
       {current.ended && (
-        <p className="text-primary/70 mt-2 text-[11px]">
+        <p className="text-primary/70 mt-2 text-[14px]">
           This ordinance was {current.label.toLowerCase()}.
         </p>
       )}
       {current.index < 0 && !current.ended && (
-        <p className="text-primary/65 mt-2 text-[11px]">
+        <p className="text-primary/65 mt-2 text-[14px]">
           An exact stage has not been confirmed by the source.
         </p>
       )}
@@ -77,14 +76,12 @@ function OrdinanceCard({
   ordinance,
   index,
   amendments,
-  matches,
   onExplain,
   chatPending,
 }: {
   ordinance: Ordinance;
   index: number;
   amendments: boolean;
-  matches: ReturnType<typeof matchRelevance>;
   onExplain: (ordinance: Pick<Ordinance, "id" | "name">) => void;
   chatPending: boolean;
 }) {
@@ -106,7 +103,7 @@ function OrdinanceCard({
       className="ordinance-card border-primary/20 rounded-[20px] border p-5 sm:p-6"
       style={{ animationDelay: `${Math.min(index, 7) * 55}ms` }}
     >
-      <div className="text-primary/65 mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] tracking-[0.1em] uppercase">
+      <div className="text-primary/65 mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[14px] tracking-[0.1em] uppercase">
         <p>
           {ordinance.sourceIdentifier
             ? `Ordinance ${ordinance.sourceIdentifier}`
@@ -129,46 +126,16 @@ function OrdinanceCard({
           type="button"
           onClick={toggleExpanded}
           aria-expanded={expanded}
-          className="text-primary mt-1 cursor-pointer text-[12px] font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="text-primary mt-1 cursor-pointer text-[14px] font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           {expanded ? "Show less" : "Read more"}
         </button>
       )}
       {amendments && latest && (
-        <p className="border-primary/30 text-primary/75 mt-3 border-l-2 pl-3 text-[13px] leading-5">
+        <p className="border-primary/30 text-primary/75 mt-3 border-l-2 pl-3 text-[14px] leading-5">
           <span className="font-semibold">Latest amendment: </span>
           {latest.description}
         </p>
-      )}
-      {matches.length > 0 && (
-        <div className="border-primary/20 bg-surface-tan/40 mt-4 rounded-lg border p-3">
-          <p className="text-[12px] font-semibold">
-            Why this may matter to you
-          </p>
-          <ul className="mt-2 space-y-3 text-[12px] leading-5">
-            {matches.map((match, index) => (
-              <li key={`${match.label}:${index}`}>
-                <p className="font-semibold">{match.label}</p>
-                <blockquote className="text-primary/75">
-                  “{match.evidenceExcerpt}”
-                </blockquote>
-                {match.evidenceUrl && (
-                  <a
-                    href={match.evidenceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2"
-                  >
-                    Supporting source ↗
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="text-primary/65 mt-2 text-[11px]">
-            A relevance match does not confirm eligibility.
-          </p>
-        </div>
       )}
       {ordinance.topics.length > 0 && (
         <ul
@@ -178,7 +145,7 @@ function OrdinanceCard({
           {ordinance.topics.map((topic) => (
             <li
               key={topic}
-              className="border-primary/15 text-primary/75 rounded-full border px-2.5 py-1 text-[11px]"
+              className="border-primary/15 text-primary/75 rounded-full border px-2.5 py-1 text-[14px]"
             >
               {topic}
             </li>
@@ -189,7 +156,7 @@ function OrdinanceCard({
         stage={ordinance.stage}
         originalStage={ordinance.originalStage}
       />
-      <div className="text-primary/65 mt-4 flex flex-wrap items-center justify-between gap-3 text-[11px]">
+      <div className="text-primary/65 mt-4 flex flex-wrap items-center justify-between gap-3 text-[14px]">
         <p>
           Updated{" "}
           <time dateTime={latest?.activityDate ?? ordinance.latestActivity}>
@@ -216,7 +183,7 @@ function OrdinanceCard({
         type="button"
         onClick={() => onExplain(ordinance)}
         disabled={chatPending}
-        className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui mt-5 cursor-pointer rounded-full border px-4 py-2.5 text-[11px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50"
+        className="border-primary/30 hover:bg-primary hover:text-surface-cream font-mono-ui mt-5 cursor-pointer rounded-full border px-4 py-2.5 text-[14px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50"
       >
         Ask Legal Seagull ↗
       </button>
@@ -262,6 +229,8 @@ export function OrdinanceFeed({
       municipalityId: municipalityId || "00000000-0000-0000-0000-000000000000",
       topics,
       section: section === "Amendments" ? "amendments" : "bills",
+      age,
+      lifeCircumstances,
       limit: 12,
     },
     {
@@ -270,21 +239,7 @@ export function OrdinanceFeed({
       staleTime: 30_000,
     },
   );
-  const [prioritizeRelevance, setPrioritizeRelevance] = useState(true);
-  const hasRelevanceProfile = age !== null || lifeCircumstances.length > 0;
-  const items = (feed.data?.pages.flatMap((page) => page.items) ?? [])
-    .map((ordinance) => ({
-      ordinance,
-      matches: matchRelevance(ordinance.relevanceRules, {
-        age,
-        lifeCircumstances,
-      }),
-    }))
-    .sort((a, b) =>
-      prioritizeRelevance
-        ? Number(b.matches.length > 0) - Number(a.matches.length > 0)
-        : 0,
-    );
+  const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
 
   function toggleTopic(topic: Topic) {
     setChosenTopics(
@@ -303,7 +258,7 @@ export function OrdinanceFeed({
           <div className="min-w-0 flex-1 sm:max-w-[360px]">
             <label
               htmlFor="feed-location"
-              className="text-primary/70 mb-2 block text-[10px] tracking-[0.12em] uppercase"
+              className="text-primary/70 mb-2 block text-[14px] tracking-[0.12em] uppercase"
             >
               Location
             </label>
@@ -331,14 +286,14 @@ export function OrdinanceFeed({
             </select>
           </div>
           {municipalityId && !feed.isPending && !feed.isError && (
-            <p role="status" className="text-primary/65 pb-2 text-[12px]">
+            <p role="status" className="text-primary/65 pb-2 text-[14px]">
               {items.length} {items.length === 1 ? "ordinance" : "ordinances"}{" "}
               shown
             </p>
           )}
         </div>
         <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="text-primary/70 text-[10px] tracking-[0.12em] uppercase">
+          <p className="text-primary/70 text-[14px] tracking-[0.12em] uppercase">
             Topics{" "}
             <span className="tracking-normal normal-case">
               · matches any selected
@@ -348,7 +303,7 @@ export function OrdinanceFeed({
             <button
               type="button"
               onClick={() => setChosenTopics([])}
-              className="cursor-pointer text-[11px] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="cursor-pointer text-[14px] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Show all topics
             </button>
@@ -365,32 +320,12 @@ export function OrdinanceFeed({
               aria-pressed={topics.includes(topic)}
               title={interestDescriptions[topic]}
               onClick={() => toggleTopic(topic)}
-              className={`cursor-pointer rounded-full border px-3 py-1.5 text-[12px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${topics.includes(topic) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-cream/60 text-primary/80 hover:border-primary/60"}`}
+              className={`cursor-pointer rounded-full border px-3 py-1.5 text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${topics.includes(topic) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-cream/60 text-primary/80 hover:border-primary/60"}`}
             >
               {topic}
             </button>
           ))}
         </div>
-        {hasRelevanceProfile && (
-          <div className="border-primary/15 mt-4 border-t pt-3">
-            <label className="flex items-center gap-2 text-[12px]">
-              <input
-                type="checkbox"
-                checked={prioritizeRelevance}
-                onChange={(event) =>
-                  setPrioritizeRelevance(event.target.checked)
-                }
-                className="accent-primary h-4 w-4"
-              />
-              Prioritize age and life circumstance matches
-            </label>
-            <p className="text-primary/65 mt-1 text-[11px] leading-5">
-              Matches appear first among loaded results. Other bills remain
-              visible. Older records may not have affected-group information
-              yet.
-            </p>
-          </div>
-        )}
       </div>
 
       {locations.isError ? (
@@ -421,7 +356,7 @@ export function OrdinanceFeed({
           title="Choose a city to explore."
           description={
             profileIdentity
-              ? "There are no stored ordinances for your saved location yet. Choose another available city above."
+              ? "There are no stored ordinances for your saved location yet."
               : "Select a location above to see its local ordinances."
           }
         />
@@ -446,19 +381,18 @@ export function OrdinanceFeed({
       ) : (
         <>
           <div className="grid gap-5">
-            {items.map(({ ordinance, matches }, index) => (
+            {items.map((ordinance, index) => (
               <OrdinanceCard
                 key={ordinance.id}
                 ordinance={ordinance}
                 index={index}
                 amendments={section === "Amendments"}
-                matches={matches}
                 onExplain={onExplain}
                 chatPending={chatPending}
               />
             ))}
           </div>
-          <p className="text-primary/60 mt-4 text-[11px] leading-5">
+          <p className="text-primary/60 mt-4 text-[14px] leading-5">
             Stages reflect the latest reported status. Local legislative
             procedures may vary.
           </p>
@@ -469,7 +403,7 @@ export function OrdinanceFeed({
           type="button"
           onClick={() => void feed.fetchNextPage()}
           disabled={feed.isFetchingNextPage}
-          className="border-primary/30 hover:bg-primary/5 mt-5 w-full cursor-pointer rounded-full border py-3 text-[12px] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
+          className="border-primary/30 hover:bg-primary/5 mt-5 w-full cursor-pointer rounded-full border py-3 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
         >
           {feed.isFetchingNextPage ? "Loading more…" : "Load more ordinances"}
         </button>
@@ -500,7 +434,7 @@ function FeedMessage({
         <button
           type="button"
           onClick={action}
-          className="border-primary/30 hover:bg-primary/5 mt-4 cursor-pointer rounded-full border px-4 py-2 text-[12px] focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="border-primary/30 hover:bg-primary/5 mt-4 cursor-pointer rounded-full border px-4 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           Try again
         </button>
