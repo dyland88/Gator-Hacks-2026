@@ -146,7 +146,7 @@ export function SignupDialog({
             type="button"
             onClick={signOut}
             disabled={busy}
-            className="bg-primary text-surface-cream font-mono-ui mt-6 cursor-pointer rounded-full px-6 py-3 text-[14px] tracking-[0.08em] uppercase disabled:opacity-50"
+            className="bg-primary text-surface-cream font-mono-ui mt-6 w-full cursor-pointer rounded-full px-6 py-3 text-center text-[14px] tracking-[0.08em] uppercase disabled:opacity-50"
           >
             {busy ? "Signing out…" : "Sign out"}
           </button>
