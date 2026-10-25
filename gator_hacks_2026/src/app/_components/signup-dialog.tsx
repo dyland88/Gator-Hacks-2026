@@ -127,7 +127,7 @@ export function SignupDialog({
         className="font-display mt-3 text-[32px] leading-tight"
       >
         {signedInEmail
-          ? "Your account."
+          ? "Your account"
           : mode === "signup"
             ? "Create a free account."
             : mode === "reset"
@@ -146,7 +146,7 @@ export function SignupDialog({
             type="button"
             onClick={signOut}
             disabled={busy}
-            className="bg-primary text-surface-cream font-mono-ui mt-6 cursor-pointer rounded-full px-6 py-3 text-[14px] tracking-[0.08em] uppercase disabled:opacity-50"
+            className="bg-primary text-surface-cream font-mono-ui mt-6 w-full cursor-pointer rounded-full px-6 py-3 text-center text-[14px] tracking-[0.08em] uppercase disabled:opacity-50"
           >
             {busy ? "Signing out…" : "Sign out"}
           </button>
@@ -221,7 +221,7 @@ export function SignupDialog({
             type="button"
             disabled={busy}
             onClick={() => changeMode(mode === "signup" ? "signin" : "signup")}
-            className="cursor-pointer text-[14px] underline underline-offset-2"
+            className="text-primary mt-2 cursor-pointer rounded-full border border-neutral-400 bg-transparent px-4 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
           >
             {mode === "signup"
               ? "Already have an account? Sign in"
@@ -232,7 +232,7 @@ export function SignupDialog({
               type="button"
               disabled={busy}
               onClick={() => changeMode("reset")}
-              className="cursor-pointer text-[14px] underline underline-offset-2"
+              className="text-primary mt-2 cursor-pointer rounded-full border border-neutral-400 bg-transparent px-4 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
             >
               Forgot your password?
             </button>
@@ -242,7 +242,7 @@ export function SignupDialog({
               type="button"
               disabled={busy}
               onClick={() => changeMode("signin")}
-              className="cursor-pointer text-[14px] underline underline-offset-2"
+              className="text-primary mt-2 cursor-pointer rounded-full border border-neutral-400 bg-transparent px-4 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
             >
               Back to sign in
             </button>
@@ -261,7 +261,7 @@ export function SignupDialog({
         type="button"
         disabled={busy}
         onClick={() => dialogRef.current?.close()}
-        className="font-mono-ui border-primary/35 hover:bg-surface-tan/50 mt-5 w-full cursor-pointer rounded-full border px-6 py-3 text-[14px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        className="font-mono-ui border-primary/35 hover:bg-surface-tan/50 mt-5 w-full cursor-pointer rounded-full border px-6 py-3 text-center text-[14px] tracking-[0.08em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {signedInEmail ? "Close" : "Continue as guest"}
       </button>
