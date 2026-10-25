@@ -48,4 +48,5 @@ yarn-error.log*
 
 # build artifacts
 build/**
+generated/
 generated/**
