@@ -261,8 +261,8 @@ async function persistChange(
     topics: [...new Set(change.topics)],
     relevanceRules: (change.relevanceRules ?? [])
       .filter((rule) => change.evidenceExcerpt.includes(rule.evidenceExcerpt))
-      .map((rule) => ({ ...rule, evidenceUrl: change.evidenceUrl })),
-    sourceUrl: change.sourceUrl,
+      .map((rule) => ({ ...rule, evidenceUrl: evidenceLink })),
+    sourceUrl: sourceLink,
     adoptedDate: change.adoptedDate,
     effectiveDate: change.effectiveDate,
     latestActivity: change.activityDate,

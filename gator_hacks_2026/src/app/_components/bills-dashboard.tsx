@@ -423,16 +423,9 @@ export function BillsDashboard() {
             height={36}
             className="shrink-0 object-contain brightness-0 invert"
             aria-hidden="true"
-          >
-            <path
-              d="M1 8C4 2 7 2 9 8C11 14 14 14 16 8C18 2 21 2 23 8C25 14 28 14 29 8"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+          />
           <span className="font-mono-ui text-[14px] tracking-[0.18em] uppercase">
-            Ledgerline
+            Legal Seagull
           </span>
         </div>
         <button
@@ -529,7 +522,7 @@ export function BillsDashboard() {
           </div>
 
           {(profile.location || profile.age) && (
-            <p className="font-mono-ui text-primary/65 mb-6 text-[11px] tracking-[0.08em]">
+            <p className="font-mono-ui text-primary/65 mb-6 text-[14px] tracking-[0.08em]">
               {profile.location}
               {profile.age && (
                 <>
@@ -704,7 +697,7 @@ export function BillsDashboard() {
                 disabled={chatMutation.isPending}
                 placeholder="Ask Legal Seagull…"
                 aria-label="Message Legal Seagull"
-                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none disabled:cursor-wait"
+                className="font-body placeholder:text-primary/50 min-w-0 flex-1 bg-transparent px-2 text-[14px] outline-none disabled:cursor-wait"
               />
               <button
                 type="submit"
@@ -902,12 +895,12 @@ export function BillsDashboard() {
             </label>
           </div>
           <fieldset className="border-primary/20 mt-6 border-t pt-5">
-            <legend className="text-[13px] font-semibold">
+            <legend className="text-[14px] font-semibold">
               Life circumstances (optional)
             </legend>
             <p
               id="circumstances-help"
-              className="text-primary/70 mt-2 text-[12px] leading-5"
+              className="text-primary/70 mt-2 text-[14px] leading-5"
             >
               Choose any that apply. Your age and these choices highlight bills
               that explicitly affect people in your situation. They do not
@@ -935,7 +928,7 @@ export function BillsDashboard() {
                         : [...current.lifeCircumstances, value],
                     }))
                   }
-                  className={`cursor-pointer rounded-full border px-3 py-2 text-[12px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(value) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
+                  className={`cursor-pointer rounded-full border px-3 py-2 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 ${draft.lifeCircumstances.includes(value) ? "border-primary bg-primary text-surface-cream" : "border-primary/25 bg-surface-tan/50 text-primary"}`}
                 >
                   {value}
                 </button>

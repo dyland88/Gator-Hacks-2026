@@ -113,10 +113,10 @@ function OrdinanceCard({
       )}
       {matches.length > 0 && (
         <div className="border-primary/20 bg-surface-tan/40 mt-4 rounded-lg border p-3">
-          <p className="text-[12px] font-semibold">
+          <p className="text-[14px] font-semibold">
             Why this may matter to you
           </p>
-          <ul className="mt-2 space-y-3 text-[12px] leading-5">
+          <ul className="mt-2 space-y-3 text-[14px] leading-5">
             {matches.map((match, index) => (
               <li key={`${match.label}:${index}`}>
                 <p className="font-semibold">{match.label}</p>
@@ -136,7 +136,7 @@ function OrdinanceCard({
               </li>
             ))}
           </ul>
-          <p className="text-primary/65 mt-2 text-[11px]">
+          <p className="text-primary/65 mt-2 text-[14px]">
             A relevance match does not confirm eligibility.
           </p>
         </div>
@@ -332,7 +332,7 @@ export function OrdinanceFeed({
         </div>
         {hasRelevanceProfile && (
           <div className="border-primary/15 mt-4 border-t pt-3">
-            <label className="flex items-center gap-2 text-[12px]">
+            <label className="flex items-center gap-2 text-[14px]">
               <input
                 type="checkbox"
                 checked={prioritizeRelevance}
@@ -343,7 +343,7 @@ export function OrdinanceFeed({
               />
               Prioritize age and life circumstance matches
             </label>
-            <p className="text-primary/65 mt-1 text-[11px] leading-5">
+            <p className="text-primary/65 mt-1 text-[14px] leading-5">
               Matches appear first among loaded results. Other bills remain
               visible. Older records may not have affected-group information
               yet.
