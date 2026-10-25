@@ -50,3 +50,4 @@ yarn-error.log*
 build/**
 generated/
 generated/**
+gator_hacks_2026/generated/**
