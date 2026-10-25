@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { SignupDialog } from "~/app/_components/signup-dialog";
+import { OrdinanceFeed } from "~/app/_components/ordinance-feed";
 import {
   genderOptions,
   interestOptions,
@@ -36,11 +37,7 @@ type ChatMessage = {
 type ChatPayloadMessage = Pick<ChatMessage, "role" | "content">;
 
 function locationLabel(place: LocationResult) {
-  const placeName = [
-    place.name,
-    place.admin1 !== place.name ? place.admin1 : undefined,
-    place.country,
-  ]
+  const placeName = [place.name, place.admin1, place.country]
     .filter(Boolean)
     .join(", ");
   return place.postcode ? `${place.postcode} — ${placeName}` : placeName;
@@ -540,19 +537,12 @@ export function BillsDashboard() {
             </div>
           )}
 
-          <div
-            key={currentSection}
-            className="section-switch-blink grid gap-5"
-            aria-label={`${currentSection} results`}
-          >
-            {[1, 2, 3].map((slot) => (
-              <div
-                key={slot}
-                aria-label={`Empty ${currentSection.toLowerCase()} slot ${slot}`}
-                className="bill-loading-slot border-primary/20 bg-surface-tan/75 h-[190px] rounded-[20px] border"
-              />
-            ))}
-          </div>
+          <OrdinanceFeed
+            key={`${signedInId ?? "guest"}:${profile.location}:${profile.interests.join("|")}`}
+            profileLocation={profile.location}
+            interests={profile.interests}
+            section={currentSection}
+          />
         </main>
 
         <aside
@@ -720,7 +710,7 @@ export function BillsDashboard() {
             {signedInId
               ? "Your choices are saved to your account."
               : "Your choices are saved on this device. Sign in to save them to your account."}{" "}
-            Bill recommendations are not connected yet.
+            Your location and topics help filter the local ordinance feed.
           </p>
           <div className="mt-7 grid gap-5">
             <fieldset>

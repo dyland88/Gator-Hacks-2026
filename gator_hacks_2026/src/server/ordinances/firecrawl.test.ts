@@ -20,12 +20,29 @@ import {
   startAgent,
   startPreviewAgent,
 } from "./firecrawl";
+import { interestOptions } from "~/lib/profile";
+import { agentJsonSchema, changeSchema } from "./schema";
 
 const jobId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
 
 beforeEach(() => vi.unstubAllGlobals());
 
 describe("Firecrawl Agent transport", () => {
+  it("uses the same predetermined topics as onboarding and rejects invented categories", () => {
+    const prompt = buildAgentPrompt({
+      cities: [],
+      windowStart: new Date("2026-10-01T00:00Z"),
+      windowEnd: new Date("2026-10-02T00:00Z"),
+    });
+    for (const topic of interestOptions) expect(prompt).toContain(`${topic}:`);
+    expect(
+      agentJsonSchema.properties.cities.items.properties.changes.items
+        .properties.topics.items.enum,
+    ).toEqual(interestOptions);
+    expect(changeSchema.shape.topics.safeParse(["Invented tag"]).success).toBe(
+      false,
+    );
+  });
   it("previews a thirty-day Gainesville window without webhook configuration", async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()

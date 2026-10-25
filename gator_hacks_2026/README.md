@@ -8,7 +8,7 @@ We are using postgresql with supabase
 
 Ledgerline uses Firecrawl **Agent** (`POST /v2/agent`), not `/scrape` or `/extract`, to research ordinance activity across saved users' U.S. cities. Firecrawl announced Agent on [December 18, 2025](https://www.firecrawl.dev/blog/introducing-agent), within the past year for the October 2026 hackathon. See the [Agent API](https://docs.firecrawl.dev/features/agent) and [webhook signature documentation](https://docs.firecrawl.dev/webhooks/security).
 
-The backend stores current ordinance snapshots and dated change history. This change does not connect dashboard cards, chat retrieval, or email delivery. Guest preferences remain browser-only and do not determine monitored cities.
+The backend stores current ordinance snapshots and dated change history. The dashboard displays those records with descriptions, source links, topic tags, and segmented legislative-stage indicators. Chat retrieval and email delivery remain deferred. Guest preferences remain browser-only and do not determine monitored cities.
 
 ### Configuration and deployment
 
@@ -67,6 +67,10 @@ For local testing, expose the dev server through an HTTPS tunnel and set `APP_UR
 
 ### Query interfaces and coverage limits
 
+The website uses public `ordinances.locations` and `ordinances.feed` queries to browse public legislation. Locations list cities with stored ordinances; feed queries require an explicit municipality UUID, optionally filter by the shared eight-topic taxonomy, and paginate with a cursor. Multiple selected topics match any of them. The amendments view includes ordinances with recorded amendment activity. Saved profile location and interests initialize the controls; visitors without a saved location see the first available city. Account profiles and their ownership checks remain private.
+
+Cards show the stored name, description, location, topics, latest activity date, and official evidence link. The five general progress segments are Introduced, Review, Hearing, Adopted, and Effective. Only the stored stage determines the current position; effective dates do not promote an ordinance to a later stage. Rejected, withdrawn, repealed, and unknown statuses use neutral segments with explicit status labels. Each municipality may follow a different legal procedure.
+
 To test the live request-to-database pipeline for Gainesville over the last 30 days, provision the tables and run:
 
 ```text
@@ -95,7 +99,9 @@ Authenticated tRPC methods `ordinances.list` and `ordinances.changes` accept `{ 
 
 Dates are inclusive `YYYY-MM-DD` filters. List dates filter the latest known ordinance activity; history dates filter individual activity dates. Stage and topic filters use the ordinance's current snapshot. Ordering is descending activity date, then descending UUID. To build a weekly digest, call the server-only `getDigestChanges({ municipalityIds, from, to, cursor?, limit? })` and page until `nextCursor` is absent. This helper defaults to 100 records per page and performs no email delivery.
 
-Ordinance identity uses municipality plus normalized official identifier, falling back to the normalized ordinance detail URL. Change identity combines ordinance identity, activity date/type, and normalized evidence URL. Tracking parameters and fragments are removed. Identical rediscoveries do not create digest events; multiple votes of the same type on the same day with the same evidence URL are combined. If a publisher changes identifiers or detail URLs, records may require later reconciliation.
+Ordinances are reconciled within each municipality by official number first, then by normalized official name. Name comparison ignores capitalization, extra whitespace, and typographic quote/dash differences while preserving title years and numbers. A changed URL or a newly discovered identifier therefore does not create a second bill when the name uniquely matches an existing record. Different known ordinance numbers remain separate even when their titles match; ambiguous name-only matches are rejected and counted. Firecrawl is instructed to preserve official titles rather than generate new titles.
+
+New records without official numbers use a municipality-scoped name key. Existing URL-based records continue matching by name without changing their stored identity keys or history hashes. Municipality rows are locked during matching to serialize concurrent ingestion for the same city. Existing duplicates are not automatically merged. Change identity combines the resolved record's stable identity key, activity date/type, and normalized evidence URL. Tracking parameters and fragments are removed. Identical rediscoveries do not create digest events; multiple votes of the same type on the same day with the same evidence URL are combined. Same-day event ordering and corrected metadata on otherwise identical events still require further reconciliation work.
 
 Evidence must come from sources the agent identifies as municipal or officially linked legislative platforms. The backend rejects malformed fields, unrequested cities, invalid dates, unsupported topics, unsafe URLs, unchecked evidence origins, and activity outside the reporting window. Source authority and excerpt accuracy remain agent-reported, not independently audited. Web search and inaccessible municipal records cannot guarantee exhaustive coverage.
 

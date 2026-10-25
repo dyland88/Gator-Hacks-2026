@@ -10,6 +10,12 @@ import {
 } from "~/lib/municipality";
 import { db } from "~/server/db";
 import {
+  matchOrdinance,
+  normalizeOrdinanceName,
+  normalizeOrdinanceNumber,
+  type StoredOrdinanceIdentity,
+} from "./identity";
+import {
   FirecrawlError,
   getAgentStatus,
   requireIngestionConfig,
@@ -181,19 +187,20 @@ async function submitRun(
 
 export function ordinanceIdentity(change: ExtractedChange) {
   return change.sourceIdentifier
-    ? `number:${change.sourceIdentifier.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim()}`
-    : `url:${change.sourceUrl}`;
+    ? `number:${normalizeOrdinanceNumber(change.sourceIdentifier)}`
+    : `name:${normalizeOrdinanceName(change.name)}`;
 }
 
 export function changeIdentity(
   municipalityKey: string,
   change: ExtractedChange,
+  identityKey = ordinanceIdentity(change),
 ) {
   return createHash("sha256")
     .update(
       JSON.stringify([
         municipalityKey,
-        ordinanceIdentity(change),
+        identityKey,
         change.activityDate,
         change.activityType,
         change.evidenceUrl,
@@ -208,7 +215,10 @@ async function persistChange(
   municipalityId: string,
   municipalityKey: string,
   change: ExtractedChange,
+  existing: StoredOrdinanceIdentity[],
 ) {
+  const match = matchOrdinance(existing, change);
+  if (match.ambiguous) return false;
   const identityKey = ordinanceIdentity(change);
   const snapshot = {
     sourceIdentifier: change.sourceIdentifier,
@@ -222,17 +232,23 @@ async function persistChange(
     effectiveDate: change.effectiveDate,
     latestActivity: change.activityDate,
   };
-  const ordinance = await tx.ordinance.upsert({
-    where: { municipalityId_identityKey: { municipalityId, identityKey } },
-    create: { municipalityId, identityKey, ...snapshot },
-    update: {},
-  });
+  const ordinance =
+    match.ordinance ??
+    (await tx.ordinance.upsert({
+      where: { municipalityId_identityKey: { municipalityId, identityKey } },
+      create: { municipalityId, identityKey, ...snapshot },
+      update: {},
+    }));
   const inserted = await tx.ordinanceChange.createMany({
     data: [
       {
         ordinanceId: ordinance.id,
         ingestionRunId: runId,
-        dedupeKey: changeIdentity(municipalityKey, change),
+        dedupeKey: changeIdentity(
+          municipalityKey,
+          change,
+          ordinance.identityKey,
+        ),
         activityType: change.activityType,
         activityDate: change.activityDate,
         activityAt: change.activityAt ? new Date(change.activityAt) : null,
@@ -243,12 +259,30 @@ async function persistChange(
     ],
     skipDuplicates: true,
   });
-  if (inserted.count) {
+  if (!existing.some((row) => row.id === ordinance.id))
+    existing.push(ordinance);
+  if (!ordinance.sourceIdentifier && change.sourceIdentifier) {
     await tx.ordinance.updateMany({
-      where: { id: ordinance.id, latestActivity: { lte: change.activityDate } },
-      data: { ...snapshot, lastObservedAt: new Date() },
+      where: { id: ordinance.id, sourceIdentifier: null },
+      data: { sourceIdentifier: change.sourceIdentifier },
     });
+    ordinance.sourceIdentifier = change.sourceIdentifier;
   }
+  if (inserted.count) {
+    const updated = await tx.ordinance.updateMany({
+      where: { id: ordinance.id, latestActivity: { lte: change.activityDate } },
+      data: {
+        ...snapshot,
+        sourceIdentifier: change.sourceIdentifier ?? ordinance.sourceIdentifier,
+        lastObservedAt: new Date(),
+      },
+    });
+    if (updated.count) {
+      ordinance.name = change.name;
+      ordinance.sourceUrl = change.sourceUrl;
+    }
+  }
+  return true;
 }
 
 export async function completeIngestion(
@@ -322,7 +356,7 @@ export async function completeIngestion(
         results.set(city.data.municipalityKey, city.data);
       }
       const coverage = [];
-      for (const city of cities) {
+      for (const city of cities.sort((a, b) => a.id.localeCompare(b.id))) {
         const result = results.get(city.key);
         if (!result || duplicates.has(city.key)) {
           rejectedCount += result?.changes.length ?? 0;
@@ -361,8 +395,34 @@ export async function completeIngestion(
             b.activityAt ?? b.activityDate,
           ),
         );
-        for (const change of accepted)
-          await persistChange(tx, run.id, city.id, city.key, change);
+        let persisted = 0;
+        if (accepted.length) {
+          await tx.$queryRaw`SELECT id FROM public.municipalities WHERE id = ${city.id}::uuid FOR UPDATE`;
+          const existing = await tx.ordinance.findMany({
+            where: { municipalityId: city.id },
+            select: {
+              id: true,
+              identityKey: true,
+              name: true,
+              sourceIdentifier: true,
+              sourceUrl: true,
+            },
+          });
+          for (const change of accepted) {
+            if (
+              await persistChange(
+                tx,
+                run.id,
+                city.id,
+                city.key,
+                change,
+                existing,
+              )
+            )
+              persisted++;
+            else rejected++;
+          }
+        }
         rejectedCount += rejected;
         coverage.push({
           municipalityKey: city.key,
@@ -372,7 +432,7 @@ export async function completeIngestion(
               ? "partial"
               : result.coverage,
           sourcesChecked: result.sourcesChecked,
-          accepted: accepted.length,
+          accepted: persisted,
           rejected,
         });
       }

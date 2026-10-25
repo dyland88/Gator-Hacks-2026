@@ -173,7 +173,11 @@ export const agentJsonSchema = {
               ],
               properties: {
                 sourceIdentifier: { type: ["string", "null"] },
-                name: { type: "string" },
+                name: {
+                  type: "string",
+                  description:
+                    "Stable official ordinance title, verbatim rather than a generated summary",
+                },
                 description: { type: "string" },
                 stage: { type: "string", enum: stages },
                 originalStage: { type: "string" },

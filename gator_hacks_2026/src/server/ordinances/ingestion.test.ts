@@ -23,6 +23,7 @@ import {
   withinWindow,
 } from "./ingestion";
 import { changeSchema, dateSchema } from "./schema";
+import { type StoredOrdinanceIdentity } from "./identity";
 
 const city = {
   ...normalizeMunicipality("Gainesville, Florida, United States")!,
@@ -57,9 +58,15 @@ function database() {
     providerJobId: jobId,
     createdAt: now,
   };
-  const ordinances = new Map<string, { id: string; latestActivity: string }>();
+  type Stored = StoredOrdinanceIdentity & {
+    municipalityId: string;
+    latestActivity: string;
+    stage: string;
+  };
+  const ordinances = new Map<string, Stored>();
   const changes = new Set<string>();
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: city.id }]),
     userProfile: {
       findMany: vi.fn().mockResolvedValue([
         {
@@ -94,23 +101,53 @@ function database() {
       update: vi.fn().mockResolvedValue(run),
     },
     ordinance: {
-      upsert: vi
+      findMany: vi
         .fn()
         .mockImplementation(
-          ({
-            create,
-          }: {
-            create: { identityKey: string; latestActivity: string };
-          }) => {
-            const current = ordinances.get(create.identityKey) ?? {
-              id: "ordinance-1",
-              ...create,
-            };
-            ordinances.set(create.identityKey, current);
-            return Promise.resolve(current);
-          },
+          ({ where }: { where: { municipalityId: string } }) =>
+            Promise.resolve(
+              [...ordinances.values()]
+                .filter((row) => row.municipalityId === where.municipalityId)
+                .map((row) => ({ ...row })),
+            ),
         ),
-      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      upsert: vi
+        .fn()
+        .mockImplementation(({ create }: { create: Omit<Stored, "id"> }) => {
+          const key = `${create.municipalityId}:${create.identityKey}`;
+          const current = ordinances.get(key) ?? {
+            id: `ordinance-${ordinances.size + 1}`,
+            ...create,
+          };
+          ordinances.set(key, current);
+          return Promise.resolve({ ...current });
+        }),
+      updateMany: vi.fn().mockImplementation(
+        ({
+          where,
+          data,
+        }: {
+          where: {
+            id: string;
+            latestActivity?: { lte: string };
+            sourceIdentifier?: null;
+          };
+          data: Partial<Stored>;
+        }) => {
+          const row = [...ordinances.values()].find(
+            (value) => value.id === where.id,
+          );
+          if (
+            !row ||
+            (where.latestActivity &&
+              row.latestActivity > where.latestActivity.lte) ||
+            (where.sourceIdentifier === null && row.sourceIdentifier !== null)
+          )
+            return Promise.resolve({ count: 0 });
+          Object.assign(row, data);
+          return Promise.resolve({ count: 1 });
+        },
+      ),
     },
     ordinanceChange: {
       createMany: vi
@@ -329,6 +366,179 @@ describe("daily submission", () => {
 });
 
 describe("result persistence", () => {
+  it("matches a normalized name when the URL changes or a previously missing number appears", async () => {
+    const { db, ordinances, changes } = database();
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([{ ...change, sourceIdentifier: null }]),
+      },
+      db,
+    );
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([
+          {
+            ...change,
+            name: "  HOUSING   ORDINANCE ",
+            sourceUrl: "https://gainesvillefl.gov/new-link",
+            sourceIdentifier: "Ordinance No. 2026-01",
+          },
+        ]),
+      },
+      db,
+    );
+    expect(ordinances.size).toBe(1);
+    expect(changes.size).toBe(1);
+    expect([...ordinances.values()][0]).toMatchObject({
+      sourceIdentifier: "Ordinance No. 2026-01",
+    });
+  });
+
+  it("updates a name-matched bill for a later stage while preserving its history", async () => {
+    const { db, ordinances, changes } = database();
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([
+          {
+            ...change,
+            sourceIdentifier: null,
+            stage: "introduced",
+            activityType: "introduction",
+            adoptedDate: null,
+          },
+        ]),
+      },
+      db,
+    );
+    const originalId = [...ordinances.values()][0]!.id;
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([
+          {
+            ...change,
+            sourceIdentifier: null,
+            activityDate: "2026-10-24",
+            sourceUrl: "https://gainesvillefl.gov/revised-link",
+          },
+        ]),
+      },
+      db,
+    );
+    expect(ordinances.size).toBe(1);
+    expect(changes.size).toBe(2);
+    expect([...ordinances.values()][0]).toMatchObject({
+      id: originalId,
+      stage: "adopted",
+      latestActivity: "2026-10-24",
+    });
+  });
+
+  it("matches legacy URL-based identities without duplicating their existing event hashes", async () => {
+    const { db, ordinances, changes } = database();
+    const identityKey = `url:${change.sourceUrl}`;
+    ordinances.set(`${city.id}:${identityKey}`, {
+      id: "legacy-ordinance",
+      municipalityId: city.id,
+      identityKey,
+      name: change.name,
+      sourceIdentifier: null,
+      sourceUrl: change.sourceUrl,
+      latestActivity: change.activityDate,
+      stage: change.stage,
+    });
+    changes.add(
+      changeIdentity(city.key, changeSchema.parse(change), identityKey),
+    );
+    await completeIngestion(
+      { jobId, status: "completed", data: result([change]) },
+      db,
+    );
+    expect(ordinances.size).toBe(1);
+    expect(changes.size).toBe(1);
+  });
+
+  it("uses a stable ordinance number even when the official title changes", async () => {
+    const { db, ordinances } = database();
+    await completeIngestion({ jobId, status: "completed", data: result() }, db);
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([
+          {
+            ...change,
+            name: "Renamed housing policy",
+            sourceIdentifier: "Ordinance No. 2026-01",
+            activityType: "amendment",
+          },
+        ]),
+      },
+      db,
+    );
+    expect(ordinances.size).toBe(1);
+    expect([...ordinances.values()][0]?.name).toBe("Renamed housing policy");
+  });
+
+  it("keeps conflicting official numbers distinct and rejects ambiguous name-only matches", async () => {
+    const { db, tx, ordinances } = database();
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([change, { ...change, sourceIdentifier: "2026-02" }]),
+      },
+      db,
+    );
+    expect(ordinances.size).toBe(2);
+    expect(
+      await completeIngestion(
+        {
+          jobId,
+          status: "completed",
+          data: result([{ ...change, sourceIdentifier: null }]),
+        },
+        db,
+      ),
+    ).toBe("partial");
+    expect(ordinances.size).toBe(2);
+    expect(tx.ingestionRun.update.mock.calls.at(-1)?.[0]).toMatchObject({
+      data: { rejectedCount: 1, coverage: [{ accepted: 0, rejected: 1 }] },
+    });
+  });
+
+  it("does not merge equal names from different municipalities", async () => {
+    const { db, run, ordinances } = database();
+    await completeIngestion(
+      {
+        jobId,
+        status: "completed",
+        data: result([{ ...change, sourceIdentifier: null }]),
+      },
+      db,
+    );
+    const otherCity = {
+      ...city,
+      ...normalizeMunicipality("Orlando, Florida, United States")!,
+      id: "33a62ed5-7538-487d-9e93-a4576b69507c",
+    };
+    run.cities = [otherCity];
+    const otherResult = result([{ ...change, sourceIdentifier: null }]);
+    otherResult.cities[0]!.municipalityKey = otherCity.key;
+    await completeIngestion(
+      { jobId, status: "completed", data: otherResult },
+      db,
+    );
+    expect(ordinances.size).toBe(2);
+  });
+
   it("accepts a checked CivicClerk tenant's document API but rejects other tenants and lookalike hosts", async () => {
     const { db, tx, changes } = database();
     const data = result([

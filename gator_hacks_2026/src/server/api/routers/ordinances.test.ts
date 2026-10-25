@@ -20,15 +20,24 @@ function setup(
   const chain = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    maybeSingle: vi
-      .fn()
-      .mockResolvedValue({
-        data: { location, location_id: "123" },
-        error: null,
-      }),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: { location, location_id: "123" },
+      error: null,
+    }),
   };
   const db = {
-    municipality: { findUnique: vi.fn().mockResolvedValue({ id: cityId }) },
+    municipality: {
+      findUnique: vi.fn().mockResolvedValue({ id: cityId }),
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: cityId,
+          key: "us:fl:gainesville",
+          city: "Gainesville",
+          state: "FL",
+          label: "Gainesville, FL, United States",
+        },
+      ]),
+    },
     ordinance: {
       findMany: vi.fn().mockResolvedValue([{ id: cursor }, { id: userId }]),
     },
@@ -129,5 +138,80 @@ describe("local ordinance read authorization", () => {
     await expect(caller.list({})).rejects.toThrow(
       "Local ordinances could not be loaded.",
     );
+  });
+});
+
+describe("public legislative feed", () => {
+  it("queries the selected municipality and any selected topics without reading a user profile", async () => {
+    const { caller, db, chain } = setup(false);
+    const response = await caller.feed({
+      municipalityId: cityId,
+      topics: ["Housing", "Public safety"],
+      direction: "forward",
+      limit: 1,
+    });
+    expect(response.items).toHaveLength(1);
+    expect(response.nextCursor).toBe(cursor);
+    expect(chain.eq).not.toHaveBeenCalled();
+    expect(db.ordinance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          municipalityId: cityId,
+          topics: { hasSome: ["Housing", "Public safety"] },
+          changes: undefined,
+        },
+        take: 2,
+      }),
+    );
+  });
+
+  it("filters amendments using stored amendment activity and supports pagination", async () => {
+    const { caller, db } = setup(false);
+    await caller.feed({
+      municipalityId: cityId,
+      topics: [],
+      section: "amendments",
+      cursor,
+      limit: 1,
+    });
+    expect(db.ordinance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          municipalityId: cityId,
+          topics: undefined,
+          changes: { some: { activityType: "amendment" } },
+        },
+        cursor: { id: cursor },
+        skip: 1,
+      }),
+    );
+  });
+
+  it("offers only public municipality fields for locations with stored ordinances", async () => {
+    const { caller, db, chain } = setup(false);
+    expect(await caller.locations()).toHaveLength(1);
+    expect(db.municipality.findMany).toHaveBeenCalledWith({
+      where: { ordinances: { some: {} } },
+      select: { id: true, key: true, city: true, state: true, label: true },
+      orderBy: [{ city: "asc" }, { state: "asc" }],
+    });
+    expect(chain.eq).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown topics, malformed locations, and ownership fields", async () => {
+    const { caller, db } = setup(false);
+    await expect(
+      caller.feed({ municipalityId: "Gainesville" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller.feed({
+        municipalityId: cityId,
+        topics: ["Invented tag"],
+      } as never),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller.feed({ municipalityId: cityId, userId } as never),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(db.ordinance.findMany).not.toHaveBeenCalled();
   });
 });

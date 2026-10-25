@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { type MunicipalityIdentity } from "~/lib/municipality";
+import { interestDescriptions, interestOptions } from "~/lib/profile";
 import { agentJsonSchema } from "./schema";
 
 export class FirecrawlError extends Error {
@@ -85,6 +86,8 @@ export function buildAgentPrompt(input: AgentWindow) {
     "Return one cities entry per municipality with coverage complete, partial or unavailable, and sourcesChecked. Complete means the available official activity sources were checked for this window, not guaranteed exhaustive coverage. No findings means changes: []; blocked or missing sources mean unavailable or partial, never complete.",
     "Each change must identify an ordinance and its dated activity with a short evidenceExcerpt supporting its date, description and stage. Use the stable ordinance detail URL for sourceUrl and the supporting official evidence URL for evidenceUrl, both on sourcesChecked origins. Prefer official ordinance numbers for sourceIdentifier; null if absent. Never invent identifiers, dates, stages, evidence, or activity.",
     "Include direct agenda, minutes, transcript, and attachment URLs in sourcesChecked, including document API URLs when a legislative portal serves files from a separate hostname.",
+    "Use the official ordinance title verbatim for name and keep it stable across lifecycle updates. Do not paraphrase it or append status labels or meeting dates. Preserve years and numbers that are part of the official title. Names are used to reconcile records within the same municipality when identifiers are missing.",
+    `Categorize every ordinance using ONLY this predetermined topic taxonomy, which is also used for user preferences and feed filters: ${interestOptions.map((topic) => `${topic}: ${interestDescriptions[topic]}`).join("; ")}. Return exact topic names in topics, without duplicates. Assign all directly relevant topics supported by the ordinance text. Do not invent new tags or infer a user's interests; return [] if no topic applies.`,
     "activityDate is the source's calendar date YYYY-MM-DD. activityAt is an ISO timestamp with explicit offset only when the source supplies an exact time; otherwise null. For date-only evidence include dates intersecting the reporting window. adoptedDate and effectiveDate are YYYY-MM-DD or null. Keep originalStage verbatim, map stage to the schema enum, use unknown if uncertain. Tags must use only the supplied topic enum.",
   ].join("\n");
 }

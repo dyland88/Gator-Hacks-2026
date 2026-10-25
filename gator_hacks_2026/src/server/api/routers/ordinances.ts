@@ -1,7 +1,13 @@
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import { normalizeMunicipality } from "~/lib/municipality";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { interestOptions } from "~/lib/profile";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 import { queryOrdinanceChanges } from "~/server/ordinances/queries";
 import { queryInput } from "~/server/ordinances/schema";
 
@@ -33,6 +39,96 @@ const localProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 });
 
 export const ordinancesRouter = createTRPCRouter({
+  locations: publicProcedure.query(async ({ ctx }) => {
+    try {
+      return await ctx.db.municipality.findMany({
+        where: { ordinances: { some: {} } },
+        select: { id: true, key: true, city: true, state: true, label: true },
+        orderBy: [{ city: "asc" }, { state: "asc" }],
+      });
+    } catch {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Available locations could not be loaded.",
+      });
+    }
+  }),
+  feed: publicProcedure
+    .input(
+      z
+        .object({
+          municipalityId: z.string().uuid(),
+          topics: z
+            .array(z.enum(interestOptions))
+            .max(interestOptions.length)
+            .default([]),
+          section: z.enum(["bills", "amendments"]).default("bills"),
+          limit: z.number().int().min(1).max(50).default(12),
+          cursor: z.string().uuid().optional(),
+          direction: z.literal("forward").optional(),
+        })
+        .strict(),
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        const rows = await ctx.db.ordinance.findMany({
+          where: {
+            municipalityId: input.municipalityId,
+            topics: input.topics.length
+              ? { hasSome: [...new Set(input.topics)] }
+              : undefined,
+            changes:
+              input.section === "amendments"
+                ? { some: { activityType: "amendment" } }
+                : undefined,
+          },
+          select: {
+            id: true,
+            sourceIdentifier: true,
+            name: true,
+            description: true,
+            stage: true,
+            originalStage: true,
+            topics: true,
+            sourceUrl: true,
+            latestActivity: true,
+            adoptedDate: true,
+            effectiveDate: true,
+            municipality: {
+              select: { id: true, city: true, state: true, label: true },
+            },
+            changes: {
+              where:
+                input.section === "amendments"
+                  ? { activityType: "amendment" }
+                  : undefined,
+              select: {
+                activityDate: true,
+                activityType: true,
+                description: true,
+                evidenceUrl: true,
+              },
+              orderBy: [{ activityDate: "desc" }, { id: "desc" }],
+              take: 1,
+            },
+          },
+          orderBy: [{ latestActivity: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+        });
+        const items = rows.slice(0, input.limit);
+        return {
+          items,
+          nextCursor: rows.length > input.limit ? items.at(-1)?.id : undefined,
+        };
+      } catch {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "The legislative feed could not be loaded.",
+        });
+      }
+    }),
   list: localProcedure.input(queryInput).query(async ({ ctx, input }) => {
     if (!ctx.municipality) return { items: [], nextCursor: undefined };
     try {

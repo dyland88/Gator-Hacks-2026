@@ -11,6 +11,22 @@ export const interestOptions = [
   "Civil rights",
 ] as const;
 
+export const interestDescriptions: Record<
+  (typeof interestOptions)[number],
+  string
+> = {
+  Nature: "Parks, conservation, trees, water, and environmental protection",
+  Health: "Public health, sanitation, healthcare, and community wellbeing",
+  Education: "Schools, libraries, learning, and educational programs",
+  Housing:
+    "Housing, zoning, land use, real property, and historic property policy",
+  Jobs: "Employment, workers, businesses, and the local economy",
+  Transportation: "Transit, roads, parking, towing, cycling, and walking",
+  "Public safety":
+    "Police, fire services, emergency response, and public safety rules",
+  "Civil rights": "Equal treatment, accessibility, voting, and civil liberties",
+};
+
 export const genderOptions = [
   "Woman",
   "Man",

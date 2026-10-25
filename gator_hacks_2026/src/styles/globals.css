@@ -84,6 +84,26 @@
   animation: chat-thinking 1s ease-in-out infinite;
 }
 
+.ordinance-card {
+  background: linear-gradient(
+    135deg,
+    var(--color-surface-cream),
+    rgb(229 211 175 / 0.38)
+  );
+  animation: ordinance-reveal 420ms ease-out both;
+}
+
+@keyframes ordinance-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes chat-thinking {
   0%,
   100% {
@@ -108,6 +128,10 @@
   }
 
   .chat-thinking-dot {
+    animation: none;
+  }
+
+  .ordinance-card {
     animation: none;
   }
 }
