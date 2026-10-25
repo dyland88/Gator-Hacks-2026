@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:profiles": "prisma db execute --file prisma/sql/user-profiles.sql --schema prisma/schema.prisma",
+    "db:ordinances": "prisma db execute --file prisma/sql/ordinances.sql --schema prisma/schema.prisma",
     "db:studio": "prisma studio",
     "dev": "next dev --turbo",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
@@ -20,6 +21,8 @@
     "preview": "next build && next start",
     "start": "next start",
     "test": "vitest run",
+    "test:agent:gainesville": "node --env-file-if-exists=.env --conditions=react-server --import tsx scripts/test-gainesville-agent.ts",
+    "test:pipeline:gainesville": "node --env-file-if-exists=.env --conditions=react-server --import tsx scripts/test-gainesville-agent.ts --persist",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -40,6 +43,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.0.15",
     "@types/node": "^20.14.10",
@@ -52,6 +56,7 @@
     "prettier-plugin-tailwindcss": "^0.6.11",
     "prisma": "^6.6.0",
     "tailwindcss": "^4.0.15",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.27.0",
     "vitest": "^5.0.5"

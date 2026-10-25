@@ -33,3 +33,78 @@ model UserProfile {
 
   @@map("user_profiles")
 }
+
+model Municipality {
+  id         String      @id @default(uuid()) @db.Uuid
+  key        String      @unique
+  city       String
+  state      String
+  label      String
+  ordinances Ordinance[]
+
+  @@map("municipalities")
+}
+
+model IngestionRun {
+  id            String            @id @default(uuid()) @db.Uuid
+  windowStart   DateTime          @db.Timestamptz(6)
+  windowEnd     DateTime          @unique @db.Timestamptz(6)
+  cities        Json
+  skippedCount  Int               @default(0)
+  status        String            @default("submitting")
+  providerJobId String?           @unique
+  coverage      Json?
+  creditsUsed   Float?
+  rejectedCount Int               @default(0)
+  failureCode   String?
+  createdAt     DateTime          @default(now()) @db.Timestamptz(6)
+  completedAt   DateTime?         @db.Timestamptz(6)
+  changes       OrdinanceChange[]
+
+  @@index([status, createdAt])
+  @@map("ingestion_runs")
+}
+
+model Ordinance {
+  id               String            @id @default(uuid()) @db.Uuid
+  municipalityId   String            @db.Uuid
+  municipality     Municipality      @relation(fields: [municipalityId], references: [id])
+  identityKey      String
+  sourceIdentifier String?
+  name             String
+  description      String
+  stage            String
+  originalStage    String
+  topics           String[]          @default([])
+  sourceUrl        String
+  adoptedDate      String?           @db.VarChar(10)
+  effectiveDate    String?           @db.VarChar(10)
+  latestActivity   String            @db.VarChar(10)
+  firstObservedAt  DateTime          @default(now()) @db.Timestamptz(6)
+  lastObservedAt   DateTime          @default(now()) @db.Timestamptz(6)
+  changes          OrdinanceChange[]
+
+  @@unique([municipalityId, identityKey])
+  @@index([municipalityId, stage, lastObservedAt])
+  @@map("ordinances")
+}
+
+model OrdinanceChange {
+  id              String       @id @default(uuid()) @db.Uuid
+  ordinanceId     String       @db.Uuid
+  ordinance       Ordinance    @relation(fields: [ordinanceId], references: [id])
+  ingestionRunId  String       @db.Uuid
+  ingestionRun    IngestionRun @relation(fields: [ingestionRunId], references: [id])
+  dedupeKey       String       @unique
+  activityType    String
+  activityDate    String       @db.VarChar(10)
+  activityAt      DateTime?    @db.Timestamptz(6)
+  description     String
+  evidenceUrl     String
+  evidenceExcerpt String
+  discoveredAt    DateTime     @default(now()) @db.Timestamptz(6)
+
+  @@index([ordinanceId, activityDate])
+  @@index([activityDate, id])
+  @@map("ordinance_changes")
+}

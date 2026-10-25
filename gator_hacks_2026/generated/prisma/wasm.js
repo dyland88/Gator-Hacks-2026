@@ -111,9 +111,74 @@ exports.Prisma.UserProfileScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.MunicipalityScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  city: 'city',
+  state: 'state',
+  label: 'label'
+};
+
+exports.Prisma.IngestionRunScalarFieldEnum = {
+  id: 'id',
+  windowStart: 'windowStart',
+  windowEnd: 'windowEnd',
+  cities: 'cities',
+  skippedCount: 'skippedCount',
+  status: 'status',
+  providerJobId: 'providerJobId',
+  coverage: 'coverage',
+  creditsUsed: 'creditsUsed',
+  rejectedCount: 'rejectedCount',
+  failureCode: 'failureCode',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+};
+
+exports.Prisma.OrdinanceScalarFieldEnum = {
+  id: 'id',
+  municipalityId: 'municipalityId',
+  identityKey: 'identityKey',
+  sourceIdentifier: 'sourceIdentifier',
+  name: 'name',
+  description: 'description',
+  stage: 'stage',
+  originalStage: 'originalStage',
+  topics: 'topics',
+  sourceUrl: 'sourceUrl',
+  adoptedDate: 'adoptedDate',
+  effectiveDate: 'effectiveDate',
+  latestActivity: 'latestActivity',
+  firstObservedAt: 'firstObservedAt',
+  lastObservedAt: 'lastObservedAt'
+};
+
+exports.Prisma.OrdinanceChangeScalarFieldEnum = {
+  id: 'id',
+  ordinanceId: 'ordinanceId',
+  ingestionRunId: 'ingestionRunId',
+  dedupeKey: 'dedupeKey',
+  activityType: 'activityType',
+  activityDate: 'activityDate',
+  activityAt: 'activityAt',
+  description: 'description',
+  evidenceUrl: 'evidenceUrl',
+  evidenceExcerpt: 'evidenceExcerpt',
+  discoveredAt: 'discoveredAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
+};
+
+exports.Prisma.JsonNullValueInput = {
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
 };
 
 exports.Prisma.QueryMode = {
@@ -126,10 +191,20 @@ exports.Prisma.NullsOrder = {
   last: 'last'
 };
 
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
+};
+
 
 exports.Prisma.ModelName = {
   Post: 'Post',
-  UserProfile: 'UserProfile'
+  UserProfile: 'UserProfile',
+  Municipality: 'Municipality',
+  IngestionRun: 'IngestionRun',
+  Ordinance: 'Ordinance',
+  OrdinanceChange: 'OrdinanceChange'
 };
 /**
  * Create the Client
@@ -179,13 +254,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider  = \"postgresql\"\n  url       = env(\"DATABASE_URL\")\n  directUrl = env(\"DIRECT_URL\")\n}\n\nmodel Post {\n  id        Int      @id @default(autoincrement())\n  name      String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([name])\n}\n\nmodel UserProfile {\n  id         String   @id @db.Uuid\n  tags       String[] @default([])\n  age        Int?\n  location   String?\n  locationId String?  @map(\"location_id\")\n  gender     String?\n  createdAt  DateTime @default(now()) @map(\"created_at\") @db.Timestamptz(6)\n  updatedAt  DateTime @default(now()) @map(\"updated_at\") @db.Timestamptz(6)\n\n  @@map(\"user_profiles\")\n}\n",
-  "inlineSchemaHash": "9ac4d85b7b18cd3c1de237be3dc6626ebd86c2426efa9c082b8362880fde8352",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider  = \"postgresql\"\n  url       = env(\"DATABASE_URL\")\n  directUrl = env(\"DIRECT_URL\")\n}\n\nmodel Post {\n  id        Int      @id @default(autoincrement())\n  name      String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([name])\n}\n\nmodel UserProfile {\n  id         String   @id @db.Uuid\n  tags       String[] @default([])\n  age        Int?\n  location   String?\n  locationId String?  @map(\"location_id\")\n  gender     String?\n  createdAt  DateTime @default(now()) @map(\"created_at\") @db.Timestamptz(6)\n  updatedAt  DateTime @default(now()) @map(\"updated_at\") @db.Timestamptz(6)\n\n  @@map(\"user_profiles\")\n}\n\nmodel Municipality {\n  id         String      @id @default(uuid()) @db.Uuid\n  key        String      @unique\n  city       String\n  state      String\n  label      String\n  ordinances Ordinance[]\n\n  @@map(\"municipalities\")\n}\n\nmodel IngestionRun {\n  id            String            @id @default(uuid()) @db.Uuid\n  windowStart   DateTime          @db.Timestamptz(6)\n  windowEnd     DateTime          @unique @db.Timestamptz(6)\n  cities        Json\n  skippedCount  Int               @default(0)\n  status        String            @default(\"submitting\")\n  providerJobId String?           @unique\n  coverage      Json?\n  creditsUsed   Float?\n  rejectedCount Int               @default(0)\n  failureCode   String?\n  createdAt     DateTime          @default(now()) @db.Timestamptz(6)\n  completedAt   DateTime?         @db.Timestamptz(6)\n  changes       OrdinanceChange[]\n\n  @@index([status, createdAt])\n  @@map(\"ingestion_runs\")\n}\n\nmodel Ordinance {\n  id               String            @id @default(uuid()) @db.Uuid\n  municipalityId   String            @db.Uuid\n  municipality     Municipality      @relation(fields: [municipalityId], references: [id])\n  identityKey      String\n  sourceIdentifier String?\n  name             String\n  description      String\n  stage            String\n  originalStage    String\n  topics           String[]          @default([])\n  sourceUrl        String\n  adoptedDate      String?           @db.VarChar(10)\n  effectiveDate    String?           @db.VarChar(10)\n  latestActivity   String            @db.VarChar(10)\n  firstObservedAt  DateTime          @default(now()) @db.Timestamptz(6)\n  lastObservedAt   DateTime          @default(now()) @db.Timestamptz(6)\n  changes          OrdinanceChange[]\n\n  @@unique([municipalityId, identityKey])\n  @@index([municipalityId, stage, lastObservedAt])\n  @@map(\"ordinances\")\n}\n\nmodel OrdinanceChange {\n  id              String       @id @default(uuid()) @db.Uuid\n  ordinanceId     String       @db.Uuid\n  ordinance       Ordinance    @relation(fields: [ordinanceId], references: [id])\n  ingestionRunId  String       @db.Uuid\n  ingestionRun    IngestionRun @relation(fields: [ingestionRunId], references: [id])\n  dedupeKey       String       @unique\n  activityType    String\n  activityDate    String       @db.VarChar(10)\n  activityAt      DateTime?    @db.Timestamptz(6)\n  description     String\n  evidenceUrl     String\n  evidenceExcerpt String\n  discoveredAt    DateTime     @default(now()) @db.Timestamptz(6)\n\n  @@index([ordinanceId, activityDate])\n  @@index([activityDate, id])\n  @@map(\"ordinance_changes\")\n}\n",
+  "inlineSchemaHash": "bf53922440ca9b02f57d62b800c7a9c36dbe8376239aa9e07f097601e897ad3d",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"Post\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"UserProfile\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"tags\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"age\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"location\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"locationId\",\"kind\":\"scalar\",\"type\":\"String\",\"dbName\":\"location_id\"},{\"name\":\"gender\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\",\"dbName\":\"created_at\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\",\"dbName\":\"updated_at\"}],\"dbName\":\"user_profiles\"}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"Post\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"UserProfile\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"tags\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"age\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"location\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"locationId\",\"kind\":\"scalar\",\"type\":\"String\",\"dbName\":\"location_id\"},{\"name\":\"gender\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\",\"dbName\":\"created_at\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\",\"dbName\":\"updated_at\"}],\"dbName\":\"user_profiles\"},\"Municipality\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"key\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"city\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"state\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"label\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ordinances\",\"kind\":\"object\",\"type\":\"Ordinance\",\"relationName\":\"MunicipalityToOrdinance\"}],\"dbName\":\"municipalities\"},\"IngestionRun\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"windowStart\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"windowEnd\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"cities\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"skippedCount\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"providerJobId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"coverage\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"creditsUsed\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"rejectedCount\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"failureCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"completedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"changes\",\"kind\":\"object\",\"type\":\"OrdinanceChange\",\"relationName\":\"IngestionRunToOrdinanceChange\"}],\"dbName\":\"ingestion_runs\"},\"Ordinance\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"municipalityId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"municipality\",\"kind\":\"object\",\"type\":\"Municipality\",\"relationName\":\"MunicipalityToOrdinance\"},{\"name\":\"identityKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sourceIdentifier\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"stage\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"originalStage\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"topics\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sourceUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"adoptedDate\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"effectiveDate\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"latestActivity\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"firstObservedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"lastObservedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"changes\",\"kind\":\"object\",\"type\":\"OrdinanceChange\",\"relationName\":\"OrdinanceToOrdinanceChange\"}],\"dbName\":\"ordinances\"},\"OrdinanceChange\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ordinanceId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ordinance\",\"kind\":\"object\",\"type\":\"Ordinance\",\"relationName\":\"OrdinanceToOrdinanceChange\"},{\"name\":\"ingestionRunId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ingestionRun\",\"kind\":\"object\",\"type\":\"IngestionRun\",\"relationName\":\"IngestionRunToOrdinanceChange\"},{\"name\":\"dedupeKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"activityType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"activityDate\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"activityAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"evidenceUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"evidenceExcerpt\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"discoveredAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"ordinance_changes\"}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),
