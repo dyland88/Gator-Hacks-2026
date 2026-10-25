@@ -10,6 +10,15 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     GEMINI_API_KEY: z.string().min(1),
     GEMMA_MODEL: z.string().min(1).default("gemma-4-26b-a4b-it"),
+    FIRECRAWL_API_KEY: z.string().min(1).optional(),
+    FIRECRAWL_WEBHOOK_SECRET: z.string().min(1).optional(),
+    CRON_SECRET: z.string().min(16).optional(),
+    APP_URL: z.string().url().optional(),
+    FIRECRAWL_AGENT_MAX_CREDITS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(100),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -34,6 +43,11 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     GEMMA_MODEL: process.env.GEMMA_MODEL,
+    FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
+    FIRECRAWL_WEBHOOK_SECRET: process.env.FIRECRAWL_WEBHOOK_SECRET,
+    CRON_SECRET: process.env.CRON_SECRET,
+    APP_URL: process.env.APP_URL,
+    FIRECRAWL_AGENT_MAX_CREDITS: process.env.FIRECRAWL_AGENT_MAX_CREDITS,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:

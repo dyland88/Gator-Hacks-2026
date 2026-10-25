@@ -139,9 +139,74 @@ exports.Prisma.UserProfileScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.MunicipalityScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  city: 'city',
+  state: 'state',
+  label: 'label'
+};
+
+exports.Prisma.IngestionRunScalarFieldEnum = {
+  id: 'id',
+  windowStart: 'windowStart',
+  windowEnd: 'windowEnd',
+  cities: 'cities',
+  skippedCount: 'skippedCount',
+  status: 'status',
+  providerJobId: 'providerJobId',
+  coverage: 'coverage',
+  creditsUsed: 'creditsUsed',
+  rejectedCount: 'rejectedCount',
+  failureCode: 'failureCode',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+};
+
+exports.Prisma.OrdinanceScalarFieldEnum = {
+  id: 'id',
+  municipalityId: 'municipalityId',
+  identityKey: 'identityKey',
+  sourceIdentifier: 'sourceIdentifier',
+  name: 'name',
+  description: 'description',
+  stage: 'stage',
+  originalStage: 'originalStage',
+  topics: 'topics',
+  sourceUrl: 'sourceUrl',
+  adoptedDate: 'adoptedDate',
+  effectiveDate: 'effectiveDate',
+  latestActivity: 'latestActivity',
+  firstObservedAt: 'firstObservedAt',
+  lastObservedAt: 'lastObservedAt'
+};
+
+exports.Prisma.OrdinanceChangeScalarFieldEnum = {
+  id: 'id',
+  ordinanceId: 'ordinanceId',
+  ingestionRunId: 'ingestionRunId',
+  dedupeKey: 'dedupeKey',
+  activityType: 'activityType',
+  activityDate: 'activityDate',
+  activityAt: 'activityAt',
+  description: 'description',
+  evidenceUrl: 'evidenceUrl',
+  evidenceExcerpt: 'evidenceExcerpt',
+  discoveredAt: 'discoveredAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
+};
+
+exports.Prisma.JsonNullValueInput = {
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
 };
 
 exports.Prisma.QueryMode = {
@@ -154,10 +219,20 @@ exports.Prisma.NullsOrder = {
   last: 'last'
 };
 
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
+};
+
 
 exports.Prisma.ModelName = {
   Post: 'Post',
-  UserProfile: 'UserProfile'
+  UserProfile: 'UserProfile',
+  Municipality: 'Municipality',
+  IngestionRun: 'IngestionRun',
+  Ordinance: 'Ordinance',
+  OrdinanceChange: 'OrdinanceChange'
 };
 
 /**
