@@ -120,3 +120,14 @@ export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
 
   return next({ ctx: { user: ctx.user, supabase: ctx.supabase } });
 });
+
+export const dbaProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.app_metadata.role !== "dba") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Database administrator access is required.",
+    });
+  }
+
+  return next();
+});

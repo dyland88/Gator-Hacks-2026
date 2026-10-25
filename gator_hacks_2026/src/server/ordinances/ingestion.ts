@@ -30,6 +30,8 @@ import {
   withinWindow,
   type ExtractedChange,
 } from "./schema";
+import { loadLifeCircumstances } from "./life-circumstances";
+import { presentableLink } from "./source-links";
 
 export { withinWindow } from "./schema";
 
@@ -109,6 +111,28 @@ export async function submitPollingIngestion(
   );
 }
 
+export async function submitCityIngestion(
+  input: { city: MunicipalityIdentity; lookbackDays: number },
+  now = new Date(),
+  database: PrismaClient = db,
+) {
+  requireIngestionConfig();
+  const windowEnd = new Date(now);
+  const windowStart = new Date(
+    windowEnd.getTime() - input.lookbackDays * 86_400_000,
+  );
+  return submitRun(
+    {
+      identities: [input.city],
+      windowStart,
+      windowEnd,
+      skippedCount: 0,
+      webhook: true,
+    },
+    database,
+  );
+}
+
 async function submitRun(
   input: {
     identities: MunicipalityIdentity[];
@@ -120,6 +144,7 @@ async function submitRun(
   database: PrismaClient,
 ) {
   const window = { windowStart: input.windowStart, windowEnd: input.windowEnd };
+  const lifeCircumstances = await loadLifeCircumstances(database);
   const cities = [];
   for (const city of input.identities.sort((a, b) =>
     a.key.localeCompare(b.key),
@@ -157,8 +182,13 @@ async function submitRun(
     };
   try {
     const jobId = input.webhook
-      ? await startAgent({ ...window, runId: run.id, cities })
-      : await startPreviewAgent({ ...window, cities });
+      ? await startAgent({
+          ...window,
+          runId: run.id,
+          cities,
+          lifeCircumstances,
+        })
+      : await startPreviewAgent({ ...window, cities, lifeCircumstances });
     await database.ingestionRun.updateMany({
       where: { id: run.id, status: "submitting", providerJobId: null },
       data: { providerJobId: jobId, status: "processing" },
@@ -216,10 +246,19 @@ async function persistChange(
   municipalityKey: string,
   change: ExtractedChange,
   existing: StoredOrdinanceIdentity[],
+  checked: string[],
 ) {
   const match = matchOrdinance(existing, change);
   if (match.ambiguous) return false;
   const identityKey = ordinanceIdentity(change);
+  const sourceLink = presentableLink(change.sourceUrl, {
+    preferred: [],
+    checked,
+  }).url;
+  const evidenceLink = presentableLink(change.evidenceUrl, {
+    preferred: [change.sourceUrl],
+    checked,
+  }).url;
   const snapshot = {
     sourceIdentifier: change.sourceIdentifier,
     name: change.name,
@@ -227,10 +266,11 @@ async function persistChange(
     stage: change.stage,
     originalStage: change.originalStage,
     topics: [...new Set(change.topics)],
-    relevanceRules: (change.relevanceRules ?? [])
-      .filter((rule) => change.evidenceExcerpt.includes(rule.evidenceExcerpt))
-      .map((rule) => ({ ...rule, evidenceUrl: change.evidenceUrl })),
-    sourceUrl: change.sourceUrl,
+    relevanceRules: (change.relevanceRules ?? []).map((rule) => ({
+      ...rule,
+      evidenceUrl: evidenceLink,
+    })),
+    sourceUrl: sourceLink,
     adoptedDate: change.adoptedDate,
     effectiveDate: change.effectiveDate,
     latestActivity: change.activityDate,
@@ -256,7 +296,7 @@ async function persistChange(
         activityDate: change.activityDate,
         activityAt: change.activityAt ? new Date(change.activityAt) : null,
         description: change.changeDescription,
-        evidenceUrl: change.evidenceUrl,
+        evidenceUrl: evidenceLink,
         evidenceExcerpt: change.evidenceExcerpt,
       },
     ],
@@ -345,6 +385,9 @@ export async function completeIngestion(
       }
       const cities = snapshotSchema.parse(run.cities);
       const expected = new Set(cities.map((city) => city.key));
+      const circumstanceKeys = new Set(
+        (await loadLifeCircumstances(tx)).map((option) => option.key),
+      );
       const results = new Map<string, z.infer<typeof cityResultSchema>>();
       const duplicates = new Set<string>();
       let rejectedCount = 0;
@@ -391,7 +434,12 @@ export async function completeIngestion(
             rejected++;
             continue;
           }
-          accepted.push(change.data);
+          accepted.push({
+            ...change.data,
+            relevanceRules: change.data.relevanceRules?.filter((rule) =>
+              rule.lifeCircumstances.every((key) => circumstanceKeys.has(key)),
+            ),
+          });
         }
         accepted.sort((a, b) =>
           (a.activityAt ?? a.activityDate).localeCompare(
@@ -411,6 +459,7 @@ export async function completeIngestion(
               sourceUrl: true,
             },
           });
+          const checked = result.sourcesChecked.map((source) => source.url);
           for (const change of accepted) {
             if (
               await persistChange(
@@ -420,6 +469,7 @@ export async function completeIngestion(
                 city.key,
                 change,
                 existing,
+                checked,
               )
             )
               persisted++;

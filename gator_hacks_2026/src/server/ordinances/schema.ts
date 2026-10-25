@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { interestOptions, lifeCircumstanceOptions } from "~/lib/profile";
+import { interestOptions } from "~/lib/profile";
 import { relevanceRulesSchema } from "~/lib/relevance";
 
 export const stages = [
@@ -123,131 +123,138 @@ export const resultSchema = z.object({
   cities: z.array(z.unknown()).max(1000),
 });
 
-export const agentJsonSchema = {
-  type: "object",
-  required: ["cities"],
-  properties: {
-    cities: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["municipalityKey", "coverage", "sourcesChecked", "changes"],
-        properties: {
-          municipalityKey: { type: "string" },
-          coverage: {
-            type: "string",
-            enum: ["complete", "partial", "unavailable"],
-          },
-          sourcesChecked: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["url", "publisher"],
-              properties: {
-                url: { type: "string" },
-                publisher: {
-                  type: "string",
-                  enum: ["municipality", "official_legislative_platform"],
+export function buildAgentJsonSchema(lifeCircumstanceKeys: string[]) {
+  return {
+    type: "object",
+    required: ["cities"],
+    properties: {
+      cities: {
+        type: "array",
+        items: {
+          type: "object",
+          required: [
+            "municipalityKey",
+            "coverage",
+            "sourcesChecked",
+            "changes",
+          ],
+          properties: {
+            municipalityKey: { type: "string" },
+            coverage: {
+              type: "string",
+              enum: ["complete", "partial", "unavailable"],
+            },
+            sourcesChecked: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["url", "publisher"],
+                properties: {
+                  url: { type: "string" },
+                  publisher: {
+                    type: "string",
+                    enum: ["municipality", "official_legislative_platform"],
+                  },
                 },
               },
             },
-          },
-          changes: {
-            type: "array",
-            items: {
-              type: "object",
-              required: [
-                "sourceIdentifier",
-                "name",
-                "description",
-                "stage",
-                "originalStage",
-                "topics",
-                "relevanceRules",
-                "sourceUrl",
-                "adoptedDate",
-                "effectiveDate",
-                "activityType",
-                "activityDate",
-                "activityAt",
-                "changeDescription",
-                "evidenceUrl",
-                "evidenceExcerpt",
-              ],
-              properties: {
-                sourceIdentifier: { type: ["string", "null"] },
-                name: {
-                  type: "string",
-                  description:
-                    "Stable official ordinance title, verbatim rather than a generated summary",
-                },
-                description: { type: "string" },
-                stage: { type: "string", enum: stages },
-                originalStage: { type: "string" },
-                topics: {
-                  type: "array",
-                  items: { type: "string", enum: interestOptions },
-                },
-                relevanceRules: {
-                  type: "array",
-                  maxItems: 20,
-                  description:
-                    "Source-supported affected groups only; [] when unknown. Each rule is an alternative group. Within a rule, all criteria must apply together.",
-                  items: {
-                    type: "object",
-                    required: [
-                      "ageMin",
-                      "ageMax",
-                      "lifeCircumstances",
-                      "evidenceExcerpt",
-                    ],
-                    properties: {
-                      ageMin: {
-                        type: ["integer", "null"],
-                        minimum: 0,
-                        maximum: 120,
-                      },
-                      ageMax: {
-                        type: ["integer", "null"],
-                        minimum: 0,
-                        maximum: 120,
-                      },
-                      lifeCircumstances: {
-                        type: "array",
-                        items: {
-                          type: "string",
-                          enum: lifeCircumstanceOptions,
+            changes: {
+              type: "array",
+              items: {
+                type: "object",
+                required: [
+                  "sourceIdentifier",
+                  "name",
+                  "description",
+                  "stage",
+                  "originalStage",
+                  "topics",
+                  "relevanceRules",
+                  "sourceUrl",
+                  "adoptedDate",
+                  "effectiveDate",
+                  "activityType",
+                  "activityDate",
+                  "activityAt",
+                  "changeDescription",
+                  "evidenceUrl",
+                  "evidenceExcerpt",
+                ],
+                properties: {
+                  sourceIdentifier: { type: ["string", "null"] },
+                  name: {
+                    type: "string",
+                    description:
+                      "Stable official ordinance title, verbatim rather than a generated summary",
+                  },
+                  description: { type: "string" },
+                  stage: { type: "string", enum: stages },
+                  originalStage: { type: "string" },
+                  topics: {
+                    type: "array",
+                    items: { type: "string", enum: interestOptions },
+                  },
+                  relevanceRules: {
+                    type: "array",
+                    maxItems: 20,
+                    description:
+                      "Source-supported affected groups only; [] when unknown. Each rule is an alternative group. Within a rule, all criteria must apply together.",
+                    items: {
+                      type: "object",
+                      required: [
+                        "ageMin",
+                        "ageMax",
+                        "lifeCircumstances",
+                        "evidenceExcerpt",
+                      ],
+                      properties: {
+                        ageMin: {
+                          type: ["integer", "null"],
+                          minimum: 0,
+                          maximum: 120,
                         },
+                        ageMax: {
+                          type: ["integer", "null"],
+                          minimum: 0,
+                          maximum: 120,
+                        },
+                        lifeCircumstances: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                            enum: lifeCircumstanceKeys,
+                          },
+                        },
+                        evidenceExcerpt: { type: "string", maxLength: 2000 },
                       },
-                      evidenceExcerpt: { type: "string", maxLength: 2000 },
                     },
                   },
-                },
-                sourceUrl: { type: "string" },
-                adoptedDate: {
-                  type: ["string", "null"],
-                  description: "YYYY-MM-DD or null",
-                },
-                effectiveDate: {
-                  type: ["string", "null"],
-                  description: "YYYY-MM-DD or null",
-                },
-                activityType: { type: "string", enum: activities },
-                activityDate: {
-                  type: "string",
-                  description: "Source-supported YYYY-MM-DD activity date",
-                },
-                activityAt: {
-                  type: ["string", "null"],
-                  description:
-                    "ISO timestamp with offset ONLY if source gives exact time, otherwise null",
-                },
-                changeDescription: { type: "string" },
-                evidenceUrl: { type: "string" },
-                evidenceExcerpt: {
-                  type: "string",
-                  description:
-                    "Short source excerpt supporting the dated activity and stage",
+                  sourceUrl: { type: "string" },
+                  adoptedDate: {
+                    type: ["string", "null"],
+                    description: "YYYY-MM-DD or null",
+                  },
+                  effectiveDate: {
+                    type: ["string", "null"],
+                    description: "YYYY-MM-DD or null",
+                  },
+                  activityType: { type: "string", enum: activities },
+                  activityDate: {
+                    type: "string",
+                    description: "Source-supported YYYY-MM-DD activity date",
+                  },
+                  activityAt: {
+                    type: ["string", "null"],
+                    description:
+                      "ISO timestamp with offset ONLY if source gives exact time, otherwise null",
+                  },
+                  changeDescription: { type: "string" },
+                  evidenceUrl: { type: "string" },
+                  evidenceExcerpt: {
+                    type: "string",
+                    description:
+                      "Short source excerpt supporting the dated activity and stage",
+                  },
                 },
               },
             },
@@ -255,8 +262,8 @@ export const agentJsonSchema = {
         },
       },
     },
-  },
-};
+  };
+}
 
 export const queryInput = z
   .object({

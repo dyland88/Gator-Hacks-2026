@@ -14,6 +14,7 @@ it("provisions profile circumstances repeatedly and preserves ownership checks",
       GRANT USAGE ON SCHEMA auth TO authenticated;
       GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
     `);
+    await pg.exec(await readFile("prisma/sql/ordinances.sql", "utf8"));
     const sql = await readFile("prisma/sql/user-profiles.sql", "utf8");
     await pg.exec(sql);
     await pg.exec(sql);
