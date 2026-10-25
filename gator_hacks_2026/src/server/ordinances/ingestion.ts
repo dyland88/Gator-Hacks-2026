@@ -30,6 +30,7 @@ import {
   withinWindow,
   type ExtractedChange,
 } from "./schema";
+import { presentableLink } from "./source-links";
 
 export { withinWindow } from "./schema";
 
@@ -238,10 +239,19 @@ async function persistChange(
   municipalityKey: string,
   change: ExtractedChange,
   existing: StoredOrdinanceIdentity[],
+  checked: string[],
 ) {
   const match = matchOrdinance(existing, change);
   if (match.ambiguous) return false;
   const identityKey = ordinanceIdentity(change);
+  const sourceLink = presentableLink(change.sourceUrl, {
+    preferred: [],
+    checked,
+  }).url;
+  const evidenceLink = presentableLink(change.evidenceUrl, {
+    preferred: [change.sourceUrl],
+    checked,
+  }).url;
   const snapshot = {
     sourceIdentifier: change.sourceIdentifier,
     name: change.name,
@@ -249,7 +259,7 @@ async function persistChange(
     stage: change.stage,
     originalStage: change.originalStage,
     topics: [...new Set(change.topics)],
-    sourceUrl: change.sourceUrl,
+    sourceUrl: sourceLink,
     adoptedDate: change.adoptedDate,
     effectiveDate: change.effectiveDate,
     latestActivity: change.activityDate,
@@ -275,7 +285,7 @@ async function persistChange(
         activityDate: change.activityDate,
         activityAt: change.activityAt ? new Date(change.activityAt) : null,
         description: change.changeDescription,
-        evidenceUrl: change.evidenceUrl,
+        evidenceUrl: evidenceLink,
         evidenceExcerpt: change.evidenceExcerpt,
       },
     ],
@@ -430,6 +440,7 @@ export async function completeIngestion(
               sourceUrl: true,
             },
           });
+          const checked = result.sourcesChecked.map((source) => source.url);
           for (const change of accepted) {
             if (
               await persistChange(
@@ -439,6 +450,7 @@ export async function completeIngestion(
                 city.key,
                 change,
                 existing,
+                checked,
               )
             )
               persisted++;
