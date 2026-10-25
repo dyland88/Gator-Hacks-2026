@@ -7,6 +7,7 @@
 
 # testing
 /coverage
+/.local/ordinance-tests/
 
 # database
 /prisma/db.sqlite

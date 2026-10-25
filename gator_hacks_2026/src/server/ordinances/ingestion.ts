@@ -4,20 +4,28 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { type PrismaClient, type Prisma } from "../../../generated/prisma";
-import { normalizeMunicipality } from "~/lib/municipality";
+import {
+  normalizeMunicipality,
+  type MunicipalityIdentity,
+} from "~/lib/municipality";
 import { db } from "~/server/db";
 import {
   FirecrawlError,
   getAgentStatus,
   requireIngestionConfig,
   startAgent,
+  startPreviewAgent,
 } from "./firecrawl";
 import {
   changeSchema,
+  checkedSourceOrigin,
   cityResultSchema,
   resultSchema,
+  withinWindow,
   type ExtractedChange,
 } from "./schema";
+
+export { withinWindow } from "./schema";
 
 const snapshotSchema = z.array(
   z.object({
@@ -63,8 +71,51 @@ export async function submitDailyIngestion(
     if (city) identities.set(city.key, city);
     else skippedCount++;
   }
+  return submitRun(
+    {
+      ...window,
+      identities: [...identities.values()],
+      skippedCount,
+      webhook: true,
+    },
+    database,
+  );
+}
+
+export async function submitPollingIngestion(
+  input: { cities: MunicipalityIdentity[]; windowStart: Date; windowEnd: Date },
+  database: PrismaClient = db,
+) {
+  if (
+    !Number.isFinite(input.windowStart.getTime()) ||
+    !Number.isFinite(input.windowEnd.getTime()) ||
+    input.windowStart >= input.windowEnd
+  )
+    throw new Error("Invalid ingestion reporting window");
+  if (!input.cities.length)
+    throw new Error("At least one municipality is required");
+  const identities = [
+    ...new Map(input.cities.map((city) => [city.key, city])).values(),
+  ];
+  return submitRun(
+    { ...input, identities, skippedCount: 0, webhook: false },
+    database,
+  );
+}
+
+async function submitRun(
+  input: {
+    identities: MunicipalityIdentity[];
+    windowStart: Date;
+    windowEnd: Date;
+    skippedCount: number;
+    webhook: boolean;
+  },
+  database: PrismaClient,
+) {
+  const window = { windowStart: input.windowStart, windowEnd: input.windowEnd };
   const cities = [];
-  for (const city of [...identities.values()].sort((a, b) =>
+  for (const city of input.identities.sort((a, b) =>
     a.key.localeCompare(b.key),
   )) {
     cities.push(
@@ -80,9 +131,9 @@ export async function submitDailyIngestion(
       {
         ...window,
         cities,
-        skippedCount,
+        skippedCount: input.skippedCount,
         status: cities.length ? "submitting" : "skipped",
-        completedAt: cities.length ? null : now,
+        completedAt: cities.length ? null : new Date(),
       },
     ],
     skipDuplicates: true,
@@ -90,10 +141,18 @@ export async function submitDailyIngestion(
   const run = await database.ingestionRun.findUniqueOrThrow({
     where: { windowEnd: window.windowEnd },
   });
+  if (run.windowStart.getTime() !== input.windowStart.getTime())
+    throw new Error("Reporting window is already claimed by another ingestion");
   if (!claimed.count || !cities.length)
-    return { runId: run.id, status: run.status };
+    return {
+      runId: run.id,
+      status: run.status,
+      providerJobId: run.providerJobId,
+    };
   try {
-    const jobId = await startAgent({ ...window, runId: run.id, cities });
+    const jobId = input.webhook
+      ? await startAgent({ ...window, runId: run.id, cities })
+      : await startPreviewAgent({ ...window, cities });
     await database.ingestionRun.updateMany({
       where: { id: run.id, status: "submitting", providerJobId: null },
       data: { providerJobId: jobId, status: "processing" },
@@ -106,27 +165,18 @@ export async function submitDailyIngestion(
       data: {
         status: rejected ? "failed" : "submission_unknown",
         failureCode: rejected ? "provider_rejected" : "submission_unknown",
-        completedAt: rejected ? now : null,
+        completedAt: rejected ? new Date() : null,
       },
     });
   }
   const updated = await database.ingestionRun.findUniqueOrThrow({
     where: { id: run.id },
   });
-  return { runId: updated.id, status: updated.status };
-}
-
-export function withinWindow(change: ExtractedChange, start: Date, end: Date) {
-  if (change.activityAt) {
-    const time = new Date(change.activityAt).getTime();
-    return (
-      change.activityAt.slice(0, 10) === change.activityDate &&
-      time >= start.getTime() &&
-      time < end.getTime()
-    );
-  }
-  const day = new Date(`${change.activityDate}T00:00:00.000Z`).getTime();
-  return day < end.getTime() && day + 86_400_000 > start.getTime();
+  return {
+    runId: updated.id,
+    status: updated.status,
+    providerJobId: updated.providerJobId,
+  };
 }
 
 export function ordinanceIdentity(change: ExtractedChange) {
@@ -286,7 +336,9 @@ export async function completeIngestion(
           continue;
         }
         const origins = new Set(
-          result.sourcesChecked.map((source) => new URL(source.url).origin),
+          result.sourcesChecked.map((source) =>
+            checkedSourceOrigin(source.url),
+          ),
         );
         let rejected = 0;
         const accepted: ExtractedChange[] = [];
@@ -296,8 +348,8 @@ export async function completeIngestion(
             result.coverage === "unavailable" ||
             !change.success ||
             !withinWindow(change.data, run.windowStart, run.windowEnd) ||
-            !origins.has(new URL(change.data.evidenceUrl).origin) ||
-            !origins.has(new URL(change.data.sourceUrl).origin)
+            !origins.has(checkedSourceOrigin(change.data.evidenceUrl)) ||
+            !origins.has(checkedSourceOrigin(change.data.sourceUrl))
           ) {
             rejected++;
             continue;

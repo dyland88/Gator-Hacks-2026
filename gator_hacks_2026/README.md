@@ -67,6 +67,30 @@ For local testing, expose the dev server through an HTTPS tunnel and set `APP_UR
 
 ### Query interfaces and coverage limits
 
+To test the live request-to-database pipeline for Gainesville over the last 30 days, provision the tables and run:
+
+```text
+pnpm db:ordinances
+pnpm test:pipeline:gainesville
+```
+
+This command writes to the database in `DATABASE_URL` and makes one real Agent request using `FIRECRAWL_API_KEY` and the configured credit ceiling. It checks the four ingestion tables before spending credits, records the run, polls Firecrawl, then calls the same transactional validation and persistence function used by production webhooks and reconciliation. It reads the stored run and newly inserted change rows back from the database and saves that readback as `.local/ordinance-tests/gainesville-<jobId>-database.json`. Valid partial findings are persisted, while incomplete coverage still produces exit code 1. Zero new rows means empty findings or deduplication; it does not prove an ordinance insert occurred.
+
+Use `pnpm test:pipeline:gainesville --resume` after an interruption. Pipeline state is stored separately from preview state, and resuming a completed run only reads its database results. `pnpm test:pipeline:gainesville --dry-run` prints the request without API calls or database writes. Polling requires no `CRON_SECRET`, `APP_URL`, webhook configuration, running web server, or saved account profile. This tests submission through database persistence; it does not exercise HTTP webhook signature verification. The monthly manual run does not change the scheduled daily reporting window.
+
+After fixing a validation issue, `pnpm test:pipeline:gainesville --retry-validation` explicitly reopens the saved partial run (or a run that failed with `invalid_result`), retrieves the same provider job, and reprocesses it without a new Agent submission. Fully completed runs remain read-only on resume. Evidence-origin checks recognize the matching tenant's `portal.civicclerk.com` and `api.civicclerk.com` hosts as one publishing source; different tenants and lookalike domains remain rejected.
+
+To test a real past-month fetch for Gainesville, Florida, set `FIRECRAWL_API_KEY` in `.env` and run from the application root:
+
+```text
+pnpm test:agent:gainesville --dry-run
+pnpm test:agent:gainesville
+```
+
+The live command submits one `/agent` job covering the 30 days immediately before execution, using the production prompt and extraction schema. It polls for up to ten minutes, prints returned updates and evidence URLs, and saves JSON under `.local/ordinance-tests/` (gitignored). It uses the configured credit ceiling, defaulting to 100. This preview does not require a running web server, webhook secret, public tunnel, saved profile, or database provisioning; it does not persist findings into the database or consume the scheduled daily claim. Run it with Node.js 22 or later.
+
+If polling stops or the terminal closes after a job ID was returned, use `pnpm test:agent:gainesville --resume` to retrieve the saved job without creating another paid job. Starting the command without `--resume` explicitly submits a new job. Inspect the source links and coverage even when the result is empty; no findings are not proof that nothing happened. To test database persistence and signed callbacks, use the daily ingestion flow above instead.
+
 Authenticated tRPC methods `ordinances.list` and `ordinances.changes` accept `{ limit?, cursor?, from?, to?, stage?, topic? }`. Pass `{}` for defaults. `limit` defaults to 25 and is capped at 100; `cursor` is the last returned UUID. Responses contain `{ items, nextCursor }`. The server derives the municipality from the verified account's profile. The client cannot choose an owner or municipality. Missing/unrecognized locations return empty results.
 
 Dates are inclusive `YYYY-MM-DD` filters. List dates filter the latest known ordinance activity; history dates filter individual activity dates. Stage and topic filters use the ordinance's current snapshot. Ordering is descending activity date, then descending UUID. To build a weekly digest, call the server-only `getDigestChanges({ municipalityIds, from, to, cursor?, limit? })` and page until `nextCursor` is absent. This helper defaults to 100 records per page and performs no email delivery.

@@ -1,22 +1,72 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("~/env", () => ({
-  env: {
-    FIRECRAWL_API_KEY: "fc-test",
-    FIRECRAWL_WEBHOOK_SECRET: "test-webhook-secret",
-    APP_URL: "https://ledgerline.example.com",
-    FIRECRAWL_AGENT_MAX_CREDITS: 100,
-  },
+const config = vi.hoisted<{
+  FIRECRAWL_API_KEY: string;
+  FIRECRAWL_WEBHOOK_SECRET: string | undefined;
+  APP_URL: string | undefined;
+  FIRECRAWL_AGENT_MAX_CREDITS: number;
+}>(() => ({
+  FIRECRAWL_API_KEY: "fc-test",
+  FIRECRAWL_WEBHOOK_SECRET: "test-webhook-secret",
+  APP_URL: "https://ledgerline.example.com",
+  FIRECRAWL_AGENT_MAX_CREDITS: 100,
 }));
+vi.mock("~/env", () => ({ env: config }));
 
-import { getAgentStatus, startAgent } from "./firecrawl";
+import {
+  buildAgentPrompt,
+  getAgentStatus,
+  startAgent,
+  startPreviewAgent,
+} from "./firecrawl";
 
 const jobId = "7a09c177-6c7c-48ab-bb1f-441dd73c72c1";
 
 beforeEach(() => vi.unstubAllGlobals());
 
 describe("Firecrawl Agent transport", () => {
+  it("previews a thirty-day Gainesville window without webhook configuration", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(Response.json({ success: true, id: jobId }));
+    vi.stubGlobal("fetch", fetch);
+    const appUrl = config.APP_URL;
+    const secret = config.FIRECRAWL_WEBHOOK_SECRET;
+    config.APP_URL = undefined;
+    config.FIRECRAWL_WEBHOOK_SECRET = undefined;
+    const input = {
+      cities: [
+        {
+          key: "us:fl:gainesville",
+          city: "Gainesville",
+          state: "FL",
+          label: "Gainesville, FL, United States",
+        },
+      ],
+      windowStart: new Date("2026-09-24T06:00:00Z"),
+      windowEnd: new Date("2026-10-24T06:00:00Z"),
+    };
+    try {
+      await expect(startPreviewAgent(input)).resolves.toBe(jobId);
+      const bodyText = fetch.mock.calls[0]?.[1]?.body;
+      if (typeof bodyText !== "string") throw new Error("Expected JSON body");
+      const body = JSON.parse(bodyText) as {
+        prompt: string;
+        webhook?: unknown;
+        maxCredits: number;
+      };
+      expect(body.webhook).toBeUndefined();
+      expect(body.prompt).toBe(buildAgentPrompt(input));
+      expect(body.prompt).toContain("Gainesville");
+      expect(body.prompt).toContain("2026-09-24T06:00:00.000Z");
+      expect(body.maxCredits).toBe(100);
+      expect(fetch).toHaveBeenCalledOnce();
+    } finally {
+      config.APP_URL = appUrl;
+      config.FIRECRAWL_WEBHOOK_SECRET = secret;
+    }
+  });
   it("starts /agent asynchronously with schema, credit limit and callback", async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()

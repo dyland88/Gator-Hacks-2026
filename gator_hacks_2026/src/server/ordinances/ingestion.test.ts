@@ -5,19 +5,21 @@ vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("./firecrawl", () => ({
   requireIngestionConfig: vi.fn(),
   startAgent: vi.fn(),
+  startPreviewAgent: vi.fn(),
   getAgentStatus: vi.fn(),
   FirecrawlError: class extends Error {},
 }));
 
 import { type PrismaClient } from "../../../generated/prisma";
 import { normalizeMunicipality } from "~/lib/municipality";
-import { getAgentStatus, startAgent } from "./firecrawl";
+import { getAgentStatus, startAgent, startPreviewAgent } from "./firecrawl";
 import {
   changeIdentity,
   completeIngestion,
   reconcileIngestion,
   reportingWindow,
   submitDailyIngestion,
+  submitPollingIngestion,
   withinWindow,
 } from "./ingestion";
 import { changeSchema, dateSchema } from "./schema";
@@ -159,6 +161,68 @@ function result(changes: unknown[] = [change]) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(startAgent).mockResolvedValue(jobId);
+  vi.mocked(startPreviewAgent).mockResolvedValue(jobId);
+});
+
+describe("manual database ingestion", () => {
+  it("submits a 30-day run and persists validated results through the shared transaction", async () => {
+    const { db, tx, run, changes } = database();
+    const windowStart = new Date(now.getTime() - 30 * 86_400_000);
+    Object.assign(run, { windowStart, windowEnd: now });
+    const submitted = await submitPollingIngestion(
+      { cities: [city], windowStart, windowEnd: now },
+      db,
+    );
+    expect(submitted.providerJobId).toBe(jobId);
+    expect(startPreviewAgent).toHaveBeenCalledWith({
+      cities: [city],
+      windowStart,
+      windowEnd: now,
+    });
+    expect(startAgent).not.toHaveBeenCalled();
+    expect(tx.ingestionRun.createMany.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(startPreviewAgent).mock.invocationCallOrder[0]!,
+    );
+    expect(
+      await completeIngestion(
+        { jobId, runId: run.id, status: "completed", data: result() },
+        db,
+      ),
+    ).toBe("completed");
+    expect(changes.size).toBe(1);
+    await completeIngestion(
+      { jobId, runId: run.id, status: "completed", data: result() },
+      db,
+    );
+    expect(changes.size).toBe(1);
+  });
+
+  it("does not spend Agent credits when database run creation fails", async () => {
+    const { db, tx } = database();
+    tx.ingestionRun.createMany.mockRejectedValueOnce(
+      new Error("database unavailable"),
+    );
+    await expect(
+      submitPollingIngestion({ cities: [city], ...reportingWindow(now) }, db),
+    ).rejects.toThrow("database unavailable");
+    expect(startPreviewAgent).not.toHaveBeenCalled();
+  });
+
+  it("rejects a reporting window collision with the daily run", async () => {
+    const { db, tx, run } = database();
+    tx.ingestionRun.createMany.mockResolvedValueOnce({ count: 0 });
+    await expect(
+      submitPollingIngestion(
+        {
+          cities: [city],
+          windowStart: new Date(run.windowEnd.getTime() - 30 * 86_400_000),
+          windowEnd: run.windowEnd,
+        },
+        db,
+      ),
+    ).rejects.toThrow("Reporting window is already claimed");
+    expect(startPreviewAgent).not.toHaveBeenCalled();
+  });
 });
 
 describe("municipalities and reporting dates", () => {
@@ -265,6 +329,44 @@ describe("daily submission", () => {
 });
 
 describe("result persistence", () => {
+  it("accepts a checked CivicClerk tenant's document API but rejects other tenants and lookalike hosts", async () => {
+    const { db, tx, changes } = database();
+    const data = result([
+      {
+        ...change,
+        sourceUrl:
+          "https://gainesvillefl.portal.civicclerk.com/event/128/files",
+        evidenceUrl:
+          "https://gainesvillefl.api.civicclerk.com/v1/Meetings/GetMeetingFileStream(fileId=98,plainText=true)",
+      },
+      {
+        ...change,
+        sourceUrl:
+          "https://gainesvillefl.portal.civicclerk.com/event/128/files",
+        evidenceUrl: "https://anothercity.api.civicclerk.com/file",
+      },
+      {
+        ...change,
+        sourceUrl:
+          "https://gainesvillefl.portal.civicclerk.com/event/128/files",
+        evidenceUrl: "https://gainesvillefl.api.civicclerk.com.evil.test/file",
+      },
+    ]);
+    data.cities[0]!.sourcesChecked = [
+      {
+        url: "https://gainesvillefl.portal.civicclerk.com/",
+        publisher: "official_legislative_platform",
+      },
+    ];
+    expect(
+      await completeIngestion({ jobId, status: "completed", data }, db),
+    ).toBe("partial");
+    expect(changes.size).toBe(1);
+    expect(tx.ingestionRun.update.mock.calls[0]![0]).toMatchObject({
+      data: { rejectedCount: 2, coverage: [{ accepted: 1, rejected: 2 }] },
+    });
+  });
+
   it("upserts ordinance snapshots and deduplicates rediscovered events across runs", async () => {
     const { db, tx, changes, ordinances } = database();
     await completeIngestion({ jobId, status: "completed", data: result() }, db);

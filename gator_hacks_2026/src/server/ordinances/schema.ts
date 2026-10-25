@@ -59,6 +59,16 @@ export function normalizeSourceUrl(value: string) {
   return url.toString();
 }
 
+export function checkedSourceOrigin(value: string) {
+  const url = new URL(value);
+  const civicClerk = /^([a-z0-9-]+)\.(?:portal|api)\.civicclerk\.com$/.exec(
+    url.hostname,
+  );
+  return civicClerk
+    ? `https://${civicClerk[1]}.portal.civicclerk.com`
+    : url.origin;
+}
+
 const sourceUrl = z
   .string()
   .url()
@@ -222,3 +232,16 @@ export const queryInput = z
   );
 
 export type ExtractedChange = z.infer<typeof changeSchema>;
+
+export function withinWindow(change: ExtractedChange, start: Date, end: Date) {
+  if (change.activityAt) {
+    const time = new Date(change.activityAt).getTime();
+    return (
+      change.activityAt.slice(0, 10) === change.activityDate &&
+      time >= start.getTime() &&
+      time < end.getTime()
+    );
+  }
+  const day = new Date(`${change.activityDate}T00:00:00.000Z`).getTime();
+  return day < end.getTime() && day + 86_400_000 > start.getTime();
+}
