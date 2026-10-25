@@ -27,12 +27,24 @@ export const interestDescriptions: Record<
   "Civil rights": "Equal treatment, accessibility, voting, and civil liberties",
 };
 
-export const genderOptions = [
-  "Woman",
-  "Man",
-  "Non-binary",
-  "Prefer not to say",
+export const lifeCircumstanceOptions = [
+  "Student",
+  "Renter",
+  "Homeowner",
+  "Parent or guardian",
+  "Caregiver",
+  "Employed",
+  "Job seeker",
+  "Small-business owner",
+  "Retired",
+  "Veteran",
+  "Person with a disability",
 ] as const;
+
+export const lifeCircumstancesSchema = z
+  .array(z.enum(lifeCircumstanceOptions))
+  .max(lifeCircumstanceOptions.length)
+  .transform((values) => [...new Set(values)]);
 
 export const profileInputSchema = z
   .object({
@@ -41,23 +53,39 @@ export const profileInputSchema = z
       .max(interestOptions.length)
       .transform((tags) => [...new Set(tags)]),
     age: z.number().int().min(1).max(120).nullable(),
+    lifeCircumstances: lifeCircumstancesSchema.default([]),
+    weeklyDigestEnabled: z.boolean().default(false),
     location: z.string().trim().max(300).nullable(),
     locationId: z.string().trim().max(100).nullable(),
-    gender: z.enum(genderOptions).nullable(),
-    weeklyDigestEnabled: z.boolean().optional(),
   })
   .strict();
 
 export type ProfileInput = z.infer<typeof profileInputSchema>;
 
+export const storedProfileInputSchema = profileInputSchema.strip();
+
+export const guestProfileSchema = z.object({
+  location: z.string().default(""),
+  locationId: z.union([z.string(), z.number()]).nullable().default(null),
+  age: z.string().default(""),
+  interests: z.array(z.string()).default([]),
+  lifeCircumstances: z
+    .array(z.string())
+    .default([])
+    .transform((values) =>
+      lifeCircumstanceOptions.filter((value) => values.includes(value)),
+    ),
+  weeklyDigestEnabled: z.boolean().default(false),
+});
+
 export type StoredProfile = {
   id: string;
   tags: string[];
   age: number | null;
+  life_circumstances: string[];
+  weekly_digest_enabled: boolean;
   location: string | null;
   location_id: string | null;
-  gender: string | null;
-  weekly_digest_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -71,10 +99,10 @@ export type Database = {
           id: string;
           tags?: string[];
           age?: number | null;
+          life_circumstances?: string[];
+          weekly_digest_enabled?: boolean;
           location?: string | null;
           location_id?: string | null;
-          gender?: string | null;
-          weekly_digest_enabled?: boolean;
         };
         Update: Partial<Omit<StoredProfile, "created_at" | "updated_at">>;
         Relationships: [];

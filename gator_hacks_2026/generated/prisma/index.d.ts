@@ -2447,10 +2447,9 @@ export namespace Prisma {
   export type UserProfileMinAggregateOutputType = {
     id: string | null
     age: number | null
+    weeklyDigestEnabled: boolean | null
     location: string | null
     locationId: string | null
-    gender: string | null
-    weeklyDigestEnabled: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2458,10 +2457,9 @@ export namespace Prisma {
   export type UserProfileMaxAggregateOutputType = {
     id: string | null
     age: number | null
+    weeklyDigestEnabled: boolean | null
     location: string | null
     locationId: string | null
-    gender: string | null
-    weeklyDigestEnabled: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2470,10 +2468,10 @@ export namespace Prisma {
     id: number
     tags: number
     age: number
+    lifeCircumstances: number
+    weeklyDigestEnabled: number
     location: number
     locationId: number
-    gender: number
-    weeklyDigestEnabled: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -2491,10 +2489,9 @@ export namespace Prisma {
   export type UserProfileMinAggregateInputType = {
     id?: true
     age?: true
+    weeklyDigestEnabled?: true
     location?: true
     locationId?: true
-    gender?: true
-    weeklyDigestEnabled?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2502,10 +2499,9 @@ export namespace Prisma {
   export type UserProfileMaxAggregateInputType = {
     id?: true
     age?: true
+    weeklyDigestEnabled?: true
     location?: true
     locationId?: true
-    gender?: true
-    weeklyDigestEnabled?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2514,10 +2510,10 @@ export namespace Prisma {
     id?: true
     tags?: true
     age?: true
+    lifeCircumstances?: true
+    weeklyDigestEnabled?: true
     location?: true
     locationId?: true
-    gender?: true
-    weeklyDigestEnabled?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -2613,10 +2609,10 @@ export namespace Prisma {
     id: string
     tags: string[]
     age: number | null
+    lifeCircumstances: string[]
+    weeklyDigestEnabled: boolean
     location: string | null
     locationId: string | null
-    gender: string | null
-    weeklyDigestEnabled: boolean
     createdAt: Date
     updatedAt: Date
     _count: UserProfileCountAggregateOutputType | null
@@ -2644,10 +2640,10 @@ export namespace Prisma {
     id?: boolean
     tags?: boolean
     age?: boolean
+    lifeCircumstances?: boolean
+    weeklyDigestEnabled?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
-    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2656,10 +2652,10 @@ export namespace Prisma {
     id?: boolean
     tags?: boolean
     age?: boolean
+    lifeCircumstances?: boolean
+    weeklyDigestEnabled?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
-    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2668,10 +2664,10 @@ export namespace Prisma {
     id?: boolean
     tags?: boolean
     age?: boolean
+    lifeCircumstances?: boolean
+    weeklyDigestEnabled?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
-    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["userProfile"]>
@@ -2680,15 +2676,15 @@ export namespace Prisma {
     id?: boolean
     tags?: boolean
     age?: boolean
+    lifeCircumstances?: boolean
+    weeklyDigestEnabled?: boolean
     location?: boolean
     locationId?: boolean
-    gender?: boolean
-    weeklyDigestEnabled?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type UserProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tags" | "age" | "location" | "locationId" | "gender" | "weeklyDigestEnabled" | "createdAt" | "updatedAt", ExtArgs["result"]["userProfile"]>
+  export type UserProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tags" | "age" | "lifeCircumstances" | "weeklyDigestEnabled" | "location" | "locationId" | "createdAt" | "updatedAt", ExtArgs["result"]["userProfile"]>
 
   export type $UserProfilePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "UserProfile"
@@ -2697,10 +2693,10 @@ export namespace Prisma {
       id: string
       tags: string[]
       age: number | null
+      lifeCircumstances: string[]
+      weeklyDigestEnabled: boolean
       location: string | null
       locationId: string | null
-      gender: string | null
-      weeklyDigestEnabled: boolean
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["userProfile"]>
@@ -3129,10 +3125,10 @@ export namespace Prisma {
     readonly id: FieldRef<"UserProfile", 'String'>
     readonly tags: FieldRef<"UserProfile", 'String[]'>
     readonly age: FieldRef<"UserProfile", 'Int'>
+    readonly lifeCircumstances: FieldRef<"UserProfile", 'String[]'>
+    readonly weeklyDigestEnabled: FieldRef<"UserProfile", 'Boolean'>
     readonly location: FieldRef<"UserProfile", 'String'>
     readonly locationId: FieldRef<"UserProfile", 'String'>
-    readonly gender: FieldRef<"UserProfile", 'String'>
-    readonly weeklyDigestEnabled: FieldRef<"UserProfile", 'Boolean'>
     readonly createdAt: FieldRef<"UserProfile", 'DateTime'>
     readonly updatedAt: FieldRef<"UserProfile", 'DateTime'>
   }
@@ -5833,6 +5829,7 @@ export namespace Prisma {
     stage: number
     originalStage: number
     topics: number
+    relevanceRules: number
     sourceUrl: number
     adoptedDate: number
     effectiveDate: number
@@ -5887,6 +5884,7 @@ export namespace Prisma {
     stage?: true
     originalStage?: true
     topics?: true
+    relevanceRules?: true
     sourceUrl?: true
     adoptedDate?: true
     effectiveDate?: true
@@ -5978,6 +5976,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics: string[]
+    relevanceRules: JsonValue
     sourceUrl: string
     adoptedDate: string | null
     effectiveDate: string | null
@@ -6013,6 +6012,7 @@ export namespace Prisma {
     stage?: boolean
     originalStage?: boolean
     topics?: boolean
+    relevanceRules?: boolean
     sourceUrl?: boolean
     adoptedDate?: boolean
     effectiveDate?: boolean
@@ -6034,6 +6034,7 @@ export namespace Prisma {
     stage?: boolean
     originalStage?: boolean
     topics?: boolean
+    relevanceRules?: boolean
     sourceUrl?: boolean
     adoptedDate?: boolean
     effectiveDate?: boolean
@@ -6053,6 +6054,7 @@ export namespace Prisma {
     stage?: boolean
     originalStage?: boolean
     topics?: boolean
+    relevanceRules?: boolean
     sourceUrl?: boolean
     adoptedDate?: boolean
     effectiveDate?: boolean
@@ -6072,6 +6074,7 @@ export namespace Prisma {
     stage?: boolean
     originalStage?: boolean
     topics?: boolean
+    relevanceRules?: boolean
     sourceUrl?: boolean
     adoptedDate?: boolean
     effectiveDate?: boolean
@@ -6080,7 +6083,7 @@ export namespace Prisma {
     lastObservedAt?: boolean
   }
 
-  export type OrdinanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "municipalityId" | "identityKey" | "sourceIdentifier" | "name" | "description" | "stage" | "originalStage" | "topics" | "sourceUrl" | "adoptedDate" | "effectiveDate" | "latestActivity" | "firstObservedAt" | "lastObservedAt", ExtArgs["result"]["ordinance"]>
+  export type OrdinanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "municipalityId" | "identityKey" | "sourceIdentifier" | "name" | "description" | "stage" | "originalStage" | "topics" | "relevanceRules" | "sourceUrl" | "adoptedDate" | "effectiveDate" | "latestActivity" | "firstObservedAt" | "lastObservedAt", ExtArgs["result"]["ordinance"]>
   export type OrdinanceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     municipality?: boolean | MunicipalityDefaultArgs<ExtArgs>
     changes?: boolean | Ordinance$changesArgs<ExtArgs>
@@ -6109,6 +6112,7 @@ export namespace Prisma {
       stage: string
       originalStage: string
       topics: string[]
+      relevanceRules: Prisma.JsonValue
       sourceUrl: string
       adoptedDate: string | null
       effectiveDate: string | null
@@ -6549,6 +6553,7 @@ export namespace Prisma {
     readonly stage: FieldRef<"Ordinance", 'String'>
     readonly originalStage: FieldRef<"Ordinance", 'String'>
     readonly topics: FieldRef<"Ordinance", 'String[]'>
+    readonly relevanceRules: FieldRef<"Ordinance", 'Json'>
     readonly sourceUrl: FieldRef<"Ordinance", 'String'>
     readonly adoptedDate: FieldRef<"Ordinance", 'String'>
     readonly effectiveDate: FieldRef<"Ordinance", 'String'>
@@ -8165,10 +8170,10 @@ export namespace Prisma {
     id: 'id',
     tags: 'tags',
     age: 'age',
+    lifeCircumstances: 'lifeCircumstances',
+    weeklyDigestEnabled: 'weeklyDigestEnabled',
     location: 'location',
     locationId: 'locationId',
-    gender: 'gender',
-    weeklyDigestEnabled: 'weeklyDigestEnabled',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -8216,6 +8221,7 @@ export namespace Prisma {
     stage: 'stage',
     originalStage: 'originalStage',
     topics: 'topics',
+    relevanceRules: 'relevanceRules',
     sourceUrl: 'sourceUrl',
     adoptedDate: 'adoptedDate',
     effectiveDate: 'effectiveDate',
@@ -8433,10 +8439,10 @@ export namespace Prisma {
     id?: UuidFilter<"UserProfile"> | string
     tags?: StringNullableListFilter<"UserProfile">
     age?: IntNullableFilter<"UserProfile"> | number | null
+    lifeCircumstances?: StringNullableListFilter<"UserProfile">
+    weeklyDigestEnabled?: BoolFilter<"UserProfile"> | boolean
     location?: StringNullableFilter<"UserProfile"> | string | null
     locationId?: StringNullableFilter<"UserProfile"> | string | null
-    gender?: StringNullableFilter<"UserProfile"> | string | null
-    weeklyDigestEnabled?: BoolFilter<"UserProfile"> | boolean
     createdAt?: DateTimeFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
   }
@@ -8445,10 +8451,10 @@ export namespace Prisma {
     id?: SortOrder
     tags?: SortOrder
     age?: SortOrderInput | SortOrder
+    lifeCircumstances?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     location?: SortOrderInput | SortOrder
     locationId?: SortOrderInput | SortOrder
-    gender?: SortOrderInput | SortOrder
-    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -8460,10 +8466,10 @@ export namespace Prisma {
     NOT?: UserProfileWhereInput | UserProfileWhereInput[]
     tags?: StringNullableListFilter<"UserProfile">
     age?: IntNullableFilter<"UserProfile"> | number | null
+    lifeCircumstances?: StringNullableListFilter<"UserProfile">
+    weeklyDigestEnabled?: BoolFilter<"UserProfile"> | boolean
     location?: StringNullableFilter<"UserProfile"> | string | null
     locationId?: StringNullableFilter<"UserProfile"> | string | null
-    gender?: StringNullableFilter<"UserProfile"> | string | null
-    weeklyDigestEnabled?: BoolFilter<"UserProfile"> | boolean
     createdAt?: DateTimeFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
   }, "id">
@@ -8472,10 +8478,10 @@ export namespace Prisma {
     id?: SortOrder
     tags?: SortOrder
     age?: SortOrderInput | SortOrder
+    lifeCircumstances?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     location?: SortOrderInput | SortOrder
     locationId?: SortOrderInput | SortOrder
-    gender?: SortOrderInput | SortOrder
-    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: UserProfileCountOrderByAggregateInput
@@ -8492,10 +8498,10 @@ export namespace Prisma {
     id?: UuidWithAggregatesFilter<"UserProfile"> | string
     tags?: StringNullableListFilter<"UserProfile">
     age?: IntNullableWithAggregatesFilter<"UserProfile"> | number | null
+    lifeCircumstances?: StringNullableListFilter<"UserProfile">
+    weeklyDigestEnabled?: BoolWithAggregatesFilter<"UserProfile"> | boolean
     location?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
     locationId?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
-    gender?: StringNullableWithAggregatesFilter<"UserProfile"> | string | null
-    weeklyDigestEnabled?: BoolWithAggregatesFilter<"UserProfile"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
   }
@@ -8665,6 +8671,7 @@ export namespace Prisma {
     stage?: StringFilter<"Ordinance"> | string
     originalStage?: StringFilter<"Ordinance"> | string
     topics?: StringNullableListFilter<"Ordinance">
+    relevanceRules?: JsonFilter<"Ordinance">
     sourceUrl?: StringFilter<"Ordinance"> | string
     adoptedDate?: StringNullableFilter<"Ordinance"> | string | null
     effectiveDate?: StringNullableFilter<"Ordinance"> | string | null
@@ -8685,6 +8692,7 @@ export namespace Prisma {
     stage?: SortOrder
     originalStage?: SortOrder
     topics?: SortOrder
+    relevanceRules?: SortOrder
     sourceUrl?: SortOrder
     adoptedDate?: SortOrderInput | SortOrder
     effectiveDate?: SortOrderInput | SortOrder
@@ -8709,6 +8717,7 @@ export namespace Prisma {
     stage?: StringFilter<"Ordinance"> | string
     originalStage?: StringFilter<"Ordinance"> | string
     topics?: StringNullableListFilter<"Ordinance">
+    relevanceRules?: JsonFilter<"Ordinance">
     sourceUrl?: StringFilter<"Ordinance"> | string
     adoptedDate?: StringNullableFilter<"Ordinance"> | string | null
     effectiveDate?: StringNullableFilter<"Ordinance"> | string | null
@@ -8729,6 +8738,7 @@ export namespace Prisma {
     stage?: SortOrder
     originalStage?: SortOrder
     topics?: SortOrder
+    relevanceRules?: SortOrder
     sourceUrl?: SortOrder
     adoptedDate?: SortOrderInput | SortOrder
     effectiveDate?: SortOrderInput | SortOrder
@@ -8753,6 +8763,7 @@ export namespace Prisma {
     stage?: StringWithAggregatesFilter<"Ordinance"> | string
     originalStage?: StringWithAggregatesFilter<"Ordinance"> | string
     topics?: StringNullableListFilter<"Ordinance">
+    relevanceRules?: JsonWithAggregatesFilter<"Ordinance">
     sourceUrl?: StringWithAggregatesFilter<"Ordinance"> | string
     adoptedDate?: StringNullableWithAggregatesFilter<"Ordinance"> | string | null
     effectiveDate?: StringNullableWithAggregatesFilter<"Ordinance"> | string | null
@@ -8899,10 +8910,10 @@ export namespace Prisma {
     id: string
     tags?: UserProfileCreatetagsInput | string[]
     age?: number | null
+    lifeCircumstances?: UserProfileCreatelifeCircumstancesInput | string[]
+    weeklyDigestEnabled?: boolean
     location?: string | null
     locationId?: string | null
-    gender?: string | null
-    weeklyDigestEnabled?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8911,10 +8922,10 @@ export namespace Prisma {
     id: string
     tags?: UserProfileCreatetagsInput | string[]
     age?: number | null
+    lifeCircumstances?: UserProfileCreatelifeCircumstancesInput | string[]
+    weeklyDigestEnabled?: boolean
     location?: string | null
     locationId?: string | null
-    gender?: string | null
-    weeklyDigestEnabled?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8923,10 +8934,10 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     tags?: UserProfileUpdatetagsInput | string[]
     age?: NullableIntFieldUpdateOperationsInput | number | null
+    lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
-    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8935,10 +8946,10 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     tags?: UserProfileUpdatetagsInput | string[]
     age?: NullableIntFieldUpdateOperationsInput | number | null
+    lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
-    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8947,10 +8958,10 @@ export namespace Prisma {
     id: string
     tags?: UserProfileCreatetagsInput | string[]
     age?: number | null
+    lifeCircumstances?: UserProfileCreatelifeCircumstancesInput | string[]
+    weeklyDigestEnabled?: boolean
     location?: string | null
     locationId?: string | null
-    gender?: string | null
-    weeklyDigestEnabled?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -8959,10 +8970,10 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     tags?: UserProfileUpdatetagsInput | string[]
     age?: NullableIntFieldUpdateOperationsInput | number | null
+    lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
-    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8971,10 +8982,10 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     tags?: UserProfileUpdatetagsInput | string[]
     age?: NullableIntFieldUpdateOperationsInput | number | null
+    lifeCircumstances?: UserProfileUpdatelifeCircumstancesInput | string[]
+    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     locationId?: NullableStringFieldUpdateOperationsInput | string | null
-    gender?: NullableStringFieldUpdateOperationsInput | string | null
-    weeklyDigestEnabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -9164,6 +9175,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -9184,6 +9196,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -9202,6 +9215,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -9222,6 +9236,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -9241,6 +9256,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -9258,6 +9274,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -9276,6 +9293,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -9525,6 +9543,11 @@ export namespace Prisma {
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
+  export type BoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type StringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -9540,11 +9563,6 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
-  export type BoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -9554,10 +9572,10 @@ export namespace Prisma {
     id?: SortOrder
     tags?: SortOrder
     age?: SortOrder
+    lifeCircumstances?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     location?: SortOrder
     locationId?: SortOrder
-    gender?: SortOrder
-    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9569,10 +9587,9 @@ export namespace Prisma {
   export type UserProfileMaxOrderByAggregateInput = {
     id?: SortOrder
     age?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     location?: SortOrder
     locationId?: SortOrder
-    gender?: SortOrder
-    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9580,10 +9597,9 @@ export namespace Prisma {
   export type UserProfileMinOrderByAggregateInput = {
     id?: SortOrder
     age?: SortOrder
+    weeklyDigestEnabled?: SortOrder
     location?: SortOrder
     locationId?: SortOrder
-    gender?: SortOrder
-    weeklyDigestEnabled?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9623,6 +9639,14 @@ export namespace Prisma {
     _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
+  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
+  }
+
   export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -9639,14 +9663,6 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
-  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type OrdinanceListRelationFilter = {
@@ -9919,6 +9935,7 @@ export namespace Prisma {
     stage?: SortOrder
     originalStage?: SortOrder
     topics?: SortOrder
+    relevanceRules?: SortOrder
     sourceUrl?: SortOrder
     adoptedDate?: SortOrder
     effectiveDate?: SortOrder
@@ -10033,6 +10050,10 @@ export namespace Prisma {
     set: string[]
   }
 
+  export type UserProfileCreatelifeCircumstancesInput = {
+    set: string[]
+  }
+
   export type UserProfileUpdatetagsInput = {
     set?: string[]
     push?: string | string[]
@@ -10046,12 +10067,17 @@ export namespace Prisma {
     divide?: number
   }
 
-  export type NullableStringFieldUpdateOperationsInput = {
-    set?: string | null
+  export type UserProfileUpdatelifeCircumstancesInput = {
+    set?: string[]
+    push?: string | string[]
   }
 
   export type BoolFieldUpdateOperationsInput = {
     set?: boolean
+  }
+
+  export type NullableStringFieldUpdateOperationsInput = {
+    set?: string | null
   }
 
   export type OrdinanceCreateNestedManyWithoutMunicipalityInput = {
@@ -10359,6 +10385,11 @@ export namespace Prisma {
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type NestedStringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -10371,11 +10402,6 @@ export namespace Prisma {
     startsWith?: string | StringFieldRefInput<$PrismaModel>
     endsWith?: string | StringFieldRefInput<$PrismaModel>
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
-  }
-
-  export type NestedBoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
   }
 
   export type NestedUuidWithAggregatesFilter<$PrismaModel = never> = {
@@ -10419,6 +10445,14 @@ export namespace Prisma {
     not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
+  }
+
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -10434,14 +10468,6 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
-  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
@@ -10540,6 +10566,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -10558,6 +10585,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -10606,6 +10634,7 @@ export namespace Prisma {
     stage?: StringFilter<"Ordinance"> | string
     originalStage?: StringFilter<"Ordinance"> | string
     topics?: StringNullableListFilter<"Ordinance">
+    relevanceRules?: JsonFilter<"Ordinance">
     sourceUrl?: StringFilter<"Ordinance"> | string
     adoptedDate?: StringNullableFilter<"Ordinance"> | string | null
     effectiveDate?: StringNullableFilter<"Ordinance"> | string | null
@@ -10792,6 +10821,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -10811,6 +10841,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -10881,6 +10912,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -10900,6 +10932,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -10960,6 +10993,7 @@ export namespace Prisma {
     stage: string
     originalStage: string
     topics?: OrdinanceCreatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl: string
     adoptedDate?: string | null
     effectiveDate?: string | null
@@ -10977,6 +11011,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -10995,6 +11030,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -11013,6 +11049,7 @@ export namespace Prisma {
     stage?: StringFieldUpdateOperationsInput | string
     originalStage?: StringFieldUpdateOperationsInput | string
     topics?: OrdinanceUpdatetopicsInput | string[]
+    relevanceRules?: JsonNullValueInput | InputJsonValue
     sourceUrl?: StringFieldUpdateOperationsInput | string
     adoptedDate?: NullableStringFieldUpdateOperationsInput | string | null
     effectiveDate?: NullableStringFieldUpdateOperationsInput | string | null

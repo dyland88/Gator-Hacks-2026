@@ -90,6 +90,7 @@ export const ordinancesRouter = createTRPCRouter({
             stage: true,
             originalStage: true,
             topics: true,
+            relevanceRules: true,
             sourceUrl: true,
             latestActivity: true,
             adoptedDate: true,

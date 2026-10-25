@@ -6,23 +6,40 @@ We are using postgresql with supabase
 
 ## Daily municipal ordinance ingestion
 
-Ledgerline uses Firecrawl **Agent** (`POST /v2/agent`), not `/scrape` or `/extract`, to research ordinance activity across saved users' U.S. cities. Firecrawl announced Agent on [December 18, 2025](https://www.firecrawl.dev/blog/introducing-agent), within the past year for the October 2026 hackathon. See the [Agent API](https://docs.firecrawl.dev/features/agent) and [webhook signature documentation](https://docs.firecrawl.dev/webhooks/security).
+Legal Seagull uses Firecrawl **Agent** (`POST /v2/agent`), not `/scrape` or `/extract`, to research ordinance activity across saved users' U.S. cities. Firecrawl announced Agent on [December 18, 2025](https://www.firecrawl.dev/blog/introducing-agent), within the past year for the October 2026 hackathon. See the [Agent API](https://docs.firecrawl.dev/features/agent) and [webhook signature documentation](https://docs.firecrawl.dev/webhooks/security).
 
-The backend stores current ordinance snapshots and dated change history. The dashboard displays those records with descriptions, source links, topic tags, and segmented legislative-stage indicators. Users can opt in to a weekly email of ordinance activity for their saved city and topics. Guest preferences remain browser-only and do not determine monitored cities.
+The backend stores current ordinance snapshots and dated change history. The dashboard displays those records with descriptions, source links, topic tags, and segmented legislative-stage indicators. Signed-in users can opt into a weekly email with new ordinance activity from their selected city. Guest preferences remain browser-only and do not determine monitored cities.
+
+### Age and life circumstances
+
+Feed preferences include optional age and multiple life circumstances, such as student, renter, parent or guardian, caregiver, and small-business owner. Guests save these on their device; signed-in users save them to their own profile under RLS. Clear the age field or deselect circumstances to stop using them.
+
+Ingestion extracts `relevanceRules` once per ordinance update, using explicit affected populations and inclusive age thresholds from official sources. Each rule requires a supporting excerpt contained in the change evidence and retains its source URL. All criteria within a rule must match; separate rules describe alternative groups. Missing metadata or age is treated as unknown, and age never implies a circumstance. Existing records start with no rules and acquire metadata on future ingestion updates.
+
+The browser matches these rules to the profile, displays supporting excerpts, and optionally puts matches first among loaded results while retaining other bills. Location and manually selected topics still filter the results. Matching does not establish program eligibility. Profile demographics and circumstances are not sent to Firecrawl or Gemma.
+
+Apply both additive SQL updates before deploying this feature:
+
+```text
+pnpm db:profiles
+pnpm db:ordinances
+pnpm db:weekly-digests
+pnpm exec prisma generate
+```
 
 ### Configuration and deployment
 
 Set these **server-only** variables locally and in the Vercel production environment:
 
-| Variable                      | Purpose                                                              |
-| ----------------------------- | -------------------------------------------------------------------- |
-| `FIRECRAWL_API_KEY`           | Firecrawl API key with Agent access                                  |
-| `FIRECRAWL_WEBHOOK_SECRET`    | Account webhook signing secret from Firecrawl settings, Advanced tab |
-| `CRON_SECRET`                 | Random bearer secret, at least 16 characters                         |
-| `APP_URL`                     | Public HTTPS production origin reachable by Firecrawl                |
-| `RESEND_API_KEY`              | Server-only Resend API key for weekly email delivery                 |
-| `EMAIL_FROM`                  | Sender identity using a verified Resend domain                       |
-| `FIRECRAWL_AGENT_MAX_CREDITS` | Maximum credits for the single daily Agent job; defaults to 100      |
+| Variable | Purpose |
+| --- | --- |
+| `FIRECRAWL_API_KEY` | Firecrawl API key with Agent access |
+| `RESEND_API_KEY` | Resend API key used to send opted-in digests |
+| `EMAIL_FROM` | Verified sender address; Resend's test sender can be used for prototypes |
+| `FIRECRAWL_WEBHOOK_SECRET` | Account webhook signing secret from Firecrawl settings, Advanced tab |
+| `CRON_SECRET` | Random bearer secret, at least 16 characters |
+| `APP_URL` | Public HTTPS production origin reachable by Firecrawl |
+| `FIRECRAWL_AGENT_MAX_CREDITS` | Maximum credits for the single daily Agent job; defaults to 200 |
 
 The new credentials are optional for ordinary app development, but ingestion fails closed when configuration is missing. Use a database owner or dedicated server role that can read `user_profiles` and bypass RLS on the ingestion tables. Never expose that credential to the browser. Authenticated profile reads in the website continue using the user's Supabase session and RLS.
 
@@ -35,17 +52,17 @@ pnpm exec prisma generate
 
 Do not substitute `prisma db push` for the SQL: the SQL also enables RLS and revokes browser access. It does not alter existing profile tables, policies, triggers, or credentials. Provisioning is repeatable. `pnpm test` applies it twice to a disposable in-memory Postgres instance and verifies role restrictions and uniqueness without connecting to Supabase.
 
-Set the Vercel project Root Directory to `gator_hacks_2026` so its `vercel.json` is used. Deploy after setting the environment variables and provisioning the database. Vercel jobs are configured:
+Set the Vercel project Root Directory to `gator_hacks_2026` so its `vercel.json` is used. Deploy after setting the environment variables and provisioning the database. Two daily ordinance jobs and one weekly digest email job are configured:
 
-| Route                                | Schedule (UTC) | Behavior                                                                                                 |
-| ------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------- |
-| `GET /api/cron/ordinances`           | 06:00 daily    | Claims the reporting window and submits at most one Agent job containing all eligible cities             |
-| `GET /api/cron/ordinances/reconcile` | 18:00 daily    | Retrieves unfinished jobs; never submits another Agent job                                               |
-| `GET /api/cron/ordinance-digest`     | 13:00 Mondays  | Sends the previous complete Monday–Sunday digest to opted-in users and records delivery outcomes |
+| Route | Schedule (UTC) | Behavior |
+| --- | --- | --- |
+| `GET /api/cron/ordinances` | 06:00 daily | Claims the reporting window and submits at most one Agent job containing all eligible cities |
+| `GET /api/cron/ordinances/reconcile` | 18:00 daily | Retrieves unfinished jobs; never submits another Agent job |
+| `GET /api/cron/ordinance-digest` | 13:00 Monday | Sends the previous completed week's changes to opted-in accounts |
 
-Vercel sends `Authorization: Bearer <CRON_SECRET>`. Cron routes reject unauthenticated requests and disable caching. Hobby schedules can arrive within the scheduled hour, so the reporting window is fixed at 06:00 UTC rather than invocation time. [Vercel cron behavior](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
+Vercel sends `Authorization: Bearer <CRON_SECRET>`. Both routes reject unauthenticated requests and disable caching. Hobby schedules can arrive within the scheduled hour, so the reporting window is fixed at 06:00 UTC rather than invocation time. [Vercel cron behavior](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
 
-For example, the October 24 run asks about `[2026-10-23T06:00:00Z, 2026-10-24T06:00:00Z)`. The first deployment does not backfill earlier history. The profile's city/state/country label is normalized, removing ZIP prefixes and combining ZIP/city search IDs. Only recognized U.S. states and Washington, DC are eligible; missing IDs, ambiguous labels, territories, and non-U.S. labels are skipped and counted. No age, gender, interests, account IDs, or email addresses are sent to Firecrawl.
+For example, the October 24 run asks about `[2026-10-23T06:00:00Z, 2026-10-24T06:00:00Z)`. The first deployment does not backfill earlier history. The profile's city/state/country label is normalized, removing ZIP prefixes and combining ZIP/city search IDs. Only recognized U.S. states and Washington, DC are eligible; missing IDs, ambiguous labels, territories, and non-U.S. labels are skipped and counted. No age, life circumstances, interests, account IDs, or email addresses are sent to Firecrawl.
 
 ### Completion and recovery
 
@@ -53,14 +70,14 @@ Firecrawl sends events to `POST /api/webhooks/firecrawl`. The handler verifies `
 
 Inspect `ingestion_runs` through trusted database tooling. Useful fields include `windowStart`, `windowEnd`, `status`, `providerJobId`, `skippedCount`, `coverage`, `rejectedCount`, `creditsUsed`, and `failureCode`. Per-city coverage records checked sources and accepted/rejected counts. `completed` means all requested cities returned complete coverage with no rejected records; `partial` means some coverage or validation was incomplete. Empty findings are only successful when sources were actually checked.
 
-| Status                      | Meaning/action                                                                                              |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `skipped`                   | No eligible saved-profile cities; no paid job submitted                                                     |
-| `submitting` / `processing` | Submission or research in progress                                                                          |
-| `submission_unknown`        | Acceptance could not be confirmed; never automatically resubmit                                             |
-| `completed` / `partial`     | Results persisted, with coverage retained per city                                                          |
-| `reconciliation_failed`     | Status read unavailable; reconciliation can be invoked again                                                |
-| `failed`                    | Provider rejected/failed, invalid result, or results no longer retrievable; inspect sanitized `failureCode` |
+| Status | Meaning/action |
+| --- | --- |
+| `skipped` | No eligible saved-profile cities; no paid job submitted |
+| `submitting` / `processing` | Submission or research in progress |
+| `submission_unknown` | Acceptance could not be confirmed; never automatically resubmit |
+| `completed` / `partial` | Results persisted, with coverage retained per city |
+| `reconciliation_failed` | Status read unavailable; reconciliation can be invoked again |
+| `failed` | Provider rejected/failed, invalid result, or results no longer retrievable; inspect sanitized `failureCode` |
 
 Invoke reconciliation manually with the same bearer header to recover a missed webhook. It checks at most ten outstanding runs per request. Firecrawl retains API results for 24 hours after completion, so the 18:00 job normally recovers the 06:00 run before expiry. Run reconciliation promptly after deployment/database outages. Failed status reads older than 48 hours become terminal `results_unavailable` failures so old runs cannot block newer recovery.
 
@@ -132,18 +149,9 @@ pnpm db:profiles
 pnpm exec prisma generate
 ```
 
-The SQL is safe to rerun. It creates `public.user_profiles`, an `auth.users` foreign key with cascading deletion, validation checks, owner-only RLS policies, timestamps, and a signup trigger. Existing auth users receive an empty profile. Supabase Auth owns emails and passwords; `user_profiles` stores tags, age, location, location ID, gender, and the weekly digest opt-in. Use `db:profiles` to provision these database objects; `prisma db push` alone does not preserve the complete auth integration.
+The SQL is safe to rerun. It creates `public.user_profiles`, an `auth.users` foreign key with cascading deletion, validation checks, owner-only RLS policies, timestamps, and a signup trigger. Existing auth users receive an empty profile. Supabase Auth owns emails and passwords; `user_profiles` stores tags, optional age, life circumstances, location, and location ID. Use `db:profiles` to provision these database objects; `prisma db push` alone does not preserve the complete auth integration.
 
 Accounts support email/password signup, sign-in, sign-out, email confirmation, password recovery, and cookie-based sessions. Signed-in preferences are loaded and saved through authenticated tRPC procedures using the user's Supabase session and RLS. Guest preferences stay on the device. Preferences selected before signup are transferred on the first sign-in on that device, without overwriting an existing populated account profile.
-
-To enable weekly ordinance email delivery, verify a sender domain in Resend, set `RESEND_API_KEY` and `EMAIL_FROM`, then apply the digest SQL and regenerate Prisma:
-
-```text
-pnpm db:weekly-digests
-pnpm exec prisma generate
-```
-
-The daily job reads only confirmed Supabase Auth email addresses for profiles that opted in, reuses stored ordinance changes, and skips users without a recognized municipality or matching weekly activity. It sends one message per user per completed week and includes a one-click unsubscribe preference link. The delivery ledger is private to the server role; no email address is copied into the profile or delivery table.
 
 Verify database ownership rules with:
 

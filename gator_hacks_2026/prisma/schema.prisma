@@ -22,15 +22,15 @@ model Post {
 }
 
 model UserProfile {
-  id                  String   @id @db.Uuid
-  tags                String[] @default([])
-  age                 Int?
-  location            String?
-  locationId          String?  @map("location_id")
-  gender              String?
-  weeklyDigestEnabled Boolean  @default(false) @map("weekly_digest_enabled")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id                String   @id @db.Uuid
+  tags              String[] @default([])
+  age               Int?
+  lifeCircumstances String[] @default([]) @map("life_circumstances")
+  weeklyDigestEnabled Boolean @default(false) @map("weekly_digest_enabled")
+  location          String?
+  locationId        String?  @map("location_id")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@map("user_profiles")
 }
@@ -77,6 +77,7 @@ model Ordinance {
   stage            String
   originalStage    String
   topics           String[]          @default([])
+  relevanceRules   Json              @default("[]")
   sourceUrl        String
   adoptedDate      String?           @db.VarChar(10)
   effectiveDate    String?           @db.VarChar(10)
