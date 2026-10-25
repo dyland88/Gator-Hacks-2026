@@ -20,6 +20,7 @@ type Profile = {
   age: string;
   interests: string[];
   lifeCircumstances: string[];
+  weeklyDigestEnabled: boolean;
 };
 
 type LocationResult = {
@@ -57,6 +58,7 @@ export function BillsDashboard() {
     age: "",
     interests: [],
     lifeCircumstances: [],
+    weeklyDigestEnabled: false,
   });
   const [draft, setDraft] = useState<Profile>(profile);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
@@ -150,6 +152,7 @@ export function BillsDashboard() {
           age: "",
           interests: [],
           lifeCircumstances: [],
+          weeklyDigestEnabled: false,
         };
         setProfile(empty);
         setDraft(empty);
@@ -197,6 +200,7 @@ export function BillsDashboard() {
           age: stored?.age?.toString() ?? "",
           interests: stored?.tags ?? [],
           lifeCircumstances: stored?.life_circumstances ?? [],
+          weeklyDigestEnabled: stored?.weekly_digest_enabled ?? false,
         };
         setProfile(restored);
         setDraft(restored);
@@ -315,6 +319,7 @@ export function BillsDashboard() {
       lifeCircumstances: draft.lifeCircumstances.filter((value) =>
         knownLifeCircumstances.has(value),
       ),
+      weeklyDigestEnabled: draft.weeklyDigestEnabled,
       age: draft.age ? Number(draft.age) : null,
       location: draft.location || null,
       locationId: draft.locationId === null ? null : String(draft.locationId),
@@ -328,8 +333,32 @@ export function BillsDashboard() {
     const userId = activeUserRef.current;
     try {
       if (userId) {
-        await saveProfileMutation.mutateAsync(result.data);
+        const saved = await saveProfileMutation.mutateAsync(result.data);
         if (activeUserRef.current !== userId) return;
+        if (saved.signupDigestStatus === "sent") {
+          setProfileError(
+            "Preferences saved. Your 30-day digest has been sent to your confirmed email.",
+          );
+        } else if (saved.signupDigestStatus === "unconfirmed") {
+          setProfileError(
+            "Preferences saved. Confirm your account email, then save your preferences again to receive your first digest.",
+          );
+        } else if (saved.signupDigestStatus === "skipped") {
+          setProfileError(
+            "Preferences saved, but a supported city was not found. Choose a city to receive local ordinance digests.",
+          );
+        } else if (
+          saved.signupDigestStatus === "failed" ||
+          saved.signupDigestStatus === "unknown"
+        ) {
+          setProfileError(
+            "Preferences saved, but the digest email could not be confirmed as delivered. Your weekly email preference is still active.",
+          );
+        } else if (saved.signupDigestStatus === "already-processed") {
+          setProfileError(
+            "This digest has already been processed. Your weekly email preference is still active.",
+          );
+        }
       } else {
         window.localStorage.setItem(
           "ledgerline-guest-onboarding",
@@ -905,6 +934,28 @@ export function BillsDashboard() {
               ))}
             </div>
           </fieldset>
+          <label className="border-primary/15 bg-surface-tan/35 mt-5 flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-[13px]">
+            <input
+              type="checkbox"
+              checked={draft.weeklyDigestEnabled}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  weeklyDigestEnabled: event.target.checked,
+                }))
+              }
+              className="accent-primary mt-0.5 h-4 w-4 shrink-0"
+            />
+            <span>
+              <span className="font-semibold">
+                Email me a weekly local ordinance digest
+              </span>
+              <span className="text-primary/65 mt-1 block text-[11px] leading-5 font-normal">
+                Sent to your confirmed account email, with new activity from
+                your selected city. You can unsubscribe at any time.
+              </span>
+            </span>
+          </label>
           {profileError && (
             <p role="alert" className="mt-4 text-sm">
               {profileError}
@@ -935,6 +986,7 @@ export function BillsDashboard() {
           const parsed = profileInputSchema.safeParse({
             tags: profile.interests,
             lifeCircumstances: profile.lifeCircumstances,
+            weeklyDigestEnabled: profile.weeklyDigestEnabled,
             age: profile.age ? Number(profile.age) : null,
             location: profile.location || null,
             locationId:

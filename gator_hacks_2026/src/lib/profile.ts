@@ -40,6 +40,7 @@ export const profileInputSchema = z
       .transform((tags) => [...new Set(tags)]),
     age: z.number().int().min(1).max(120).nullable(),
     lifeCircumstances: lifeCircumstancesSchema.default([]),
+    weeklyDigestEnabled: z.boolean().default(false),
     location: z.string().trim().max(300).nullable(),
     locationId: z.string().trim().max(100).nullable(),
   })
@@ -55,6 +56,7 @@ export const guestProfileSchema = z.object({
   age: z.string().default(""),
   interests: z.array(z.string()).default([]),
   lifeCircumstances: z.array(z.string().max(100)).max(20).default([]),
+  weeklyDigestEnabled: z.boolean().default(false),
 });
 
 export type StoredProfile = {
@@ -62,6 +64,7 @@ export type StoredProfile = {
   tags: string[];
   age: number | null;
   life_circumstances: string[];
+  weekly_digest_enabled: boolean;
   location: string | null;
   location_id: string | null;
   created_at: string;
@@ -78,6 +81,7 @@ export type Database = {
           tags?: string[];
           age?: number | null;
           life_circumstances?: string[];
+          weekly_digest_enabled?: boolean;
           location?: string | null;
           location_id?: string | null;
         };

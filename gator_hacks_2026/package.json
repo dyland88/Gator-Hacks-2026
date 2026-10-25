@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:profiles": "prisma db execute --file prisma/sql/user-profiles.sql --schema prisma/schema.prisma",
     "db:ordinances": "prisma db execute --file prisma/sql/ordinances.sql --schema prisma/schema.prisma",
+    "db:weekly-digests": "prisma db execute --file prisma/sql/weekly-digests.sql --schema prisma/schema.prisma",
     "db:studio": "prisma studio",
     "dev": "next dev --turbo",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",

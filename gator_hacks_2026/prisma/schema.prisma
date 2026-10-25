@@ -27,6 +27,7 @@ model UserProfile {
   tags              String[] @default([])
   age               Int?
   lifeCircumstances String[] @default([]) @map("life_circumstances")
+  weeklyDigestEnabled Boolean @default(false) @map("weekly_digest_enabled")
   location          String?
   locationId        String?  @map("location_id")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
